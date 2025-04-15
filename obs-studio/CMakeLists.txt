@@ -28,7 +28,6 @@ if(CMAKE_HOST_SYSTEM_NAME MATCHES "(Darwin)" OR OBS_CMAKE_VERSION VERSION_GREATE
 
   add_subdirectory(test/test-input)
   add_subdirectory(UI)
-  add_subdirectory(ow-obs)
 
   message_configuration()
   return()
