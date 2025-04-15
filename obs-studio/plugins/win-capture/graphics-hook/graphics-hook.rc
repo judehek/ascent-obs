@@ -1,0 +1,39 @@
+/* DO NOT MODIFY THIS FILE WITHOUT CONSULTING LAIN.  OTHERWISE, LAIN WILL DO
+ * EVERYTHING IN HER POWER TO MAKE YOUR LIFE MISERABLE FROM THEREON OUT WITH A
+ * LEVEL OF DETERMINATION UNLIKE ANYTHING ANYONE HAS EVER SEEN IN THE HISTORY
+ * OF MANKIND.
+ *
+ * YES, THAT MEANS YOU READING THIS RIGHT NOW.
+ *
+ * IF YOU HAVE A FORK AND FEEL YOU NEED TO MODIFY THIS, SUBMIT A PULL REQUEST
+ * AND WAIT UNTIL IT HAS BEEN MERGED AND FULLY RELEASED IN THE CORE PROJECT
+ * BEFORE USING IT.
+ *
+ * THIS IS YOUR ONLY WARNING. */
+
+#include "../graphics-hook-ver.h"
+
+1 VERSIONINFO
+FILEVERSION HOOK_VER_MAJOR,HOOK_VER_MINOR,HOOK_VER_PATCH,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName", "Overwolf"
+      VALUE "FileDescription", "Overwolf Graphics Hook"
+      VALUE "FileVersion", HOOK_VERSION_NAME
+      VALUE "InternalName", "graphics"
+      VALUE "OriginalFilename", "graphics"
+      VALUE "ProductName", "Overwolf Graphics"
+      VALUE "ProductVersion", HOOK_VERSION_NAME
+      VALUE "Comments", "Overwolf"
+      VALUE "LegalCopyright", "Copyright Overwolf © 2024"
+    END
+  END
+
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 0x04B0
+  END
+END

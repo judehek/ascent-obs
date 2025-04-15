@@ -1,0 +1,318 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="obs_control">
+      <UniqueIdentifier>{9b1caa74-0cdd-40a2-a39d-9847a4cb7912}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Header Files">
+      <UniqueIdentifier>{0417cd0a-0ac1-4dd9-8cd0-d267322145f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Source Files">
+      <UniqueIdentifier>{5a25283f-8de2-4ce7-9abf-887ebd217619}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Header Files\commands">
+      <UniqueIdentifier>{6c35d63d-31ec-4b39-b58d-3bfdab4ff9ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Source Files\commands">
+      <UniqueIdentifier>{83a54b20-9744-4487-a00c-0d9313376fa0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Header Files\scene">
+      <UniqueIdentifier>{63c0dcc6-f54b-4ee0-a5dc-1d21e53d6c33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Source Files\scene">
+      <UniqueIdentifier>{f3ced1ba-7fa3-4bbc-82b9-5f445d3f634a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Header Files\output">
+      <UniqueIdentifier>{c3b6cec9-e2af-414d-a570-f8b99ac9c2d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Source Files\output">
+      <UniqueIdentifier>{26c00e4c-4a2c-4a7d-a75b-18ce143ce75f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Header Files\audio">
+      <UniqueIdentifier>{1db6fa24-a573-4e22-aff3-1733776f157b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obs_control\Source Files\audio">
+      <UniqueIdentifier>{3f79375b-71d5-40ae-8e63-e55f79712611}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="message_loop.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="server.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\obs.h">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\obs_control.h">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\settings.h">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\audio-encoders.hpp">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\obs_utils.h">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\obs_control_communications.h">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_query_machine_info.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_start.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="ow_obs_logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\monitor_source.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\source.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\utils.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\brb_source.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\game_capture_source.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\game_capture_source_delegate.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_set_volume.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_stop.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_game_focus_changed.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_add_game_source.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_start_replay_capture.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_stop_replay_capture.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\replay_output.h">
+      <Filter>obs_control\Header Files\output</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\advanced_output.h">
+      <Filter>obs_control\Header Files\output</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\stream_output.h">
+      <Filter>obs_control\Header Files\output</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\tobii_gaze_overlay_source.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_update_tobii_gaze.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_set_brb.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\obs_display_tester.h">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\base_output.h">
+      <Filter>obs_control\Header Files\output</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\record_output.h">
+      <Filter>obs_control\Header Files\output</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\commands\command_split_video.h">
+      <Filter>obs_control\Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\generic_obs_source.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="switches.h">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\window_source.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\scene\game_audio_capture_source.h">
+      <Filter>obs_control\Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\obs_audio.h">
+      <Filter>obs_control\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\obs_audio_source_control.h">
+      <Filter>obs_control\Header Files\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="obs_control\obs_audio_process_capture.h">
+      <Filter>obs_control\Header Files\audio</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ow-obs.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="large.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="message_loop.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="server.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\obs.cpp">
+      <Filter>obs_control\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\obs_control.cpp">
+      <Filter>obs_control\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\settings.cpp">
+      <Filter>obs_control\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\audio-encoders.cpp">
+      <Filter>obs_control\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_query_machine_info.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_start.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="ow_obs_logger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\scene\monitor_source.cpp">
+      <Filter>obs_control\Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\scene\source.cpp">
+      <Filter>obs_control\Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\scene\brb_source.cpp">
+      <Filter>obs_control\Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\scene\utils.cpp">
+      <Filter>obs_control\Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\scene\game_capture_source.cpp">
+      <Filter>obs_control\Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_set_volume.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_stop.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_game_focus_changed.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_add_game_source.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_start_replay_capture.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_stop_replay_capture.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\replay_output.cpp">
+      <Filter>obs_control\Source Files\output</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\advanced_output.cpp">
+      <Filter>obs_control\Source Files\output</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\stream_output.cpp">
+      <Filter>obs_control\Source Files\output</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\scene\tobii_gaze_overlay_source.cpp">
+      <Filter>obs_control\Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_update_tobii_gaze.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_set_brb.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\obs_display_tester.cpp">
+      <Filter>obs_control\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\base_output.cpp">
+      <Filter>obs_control\Source Files\output</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\record_output.cpp">
+      <Filter>obs_control\Source Files\output</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\commands\command_split_video.cpp">
+      <Filter>obs_control\Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\obs_utils.cpp">
+      <Filter>obs_control\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\scene\generic_obs_source.cpp">
+      <Filter>obs_control\Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="switches.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\obs_qa_flags.cpp">
+      <Filter>obs_control\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\scene\window_source.cpp">
+      <Filter>obs_control\Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\obs_audio.cpp">
+      <Filter>obs_control\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\obs_audio_source_control.cpp">
+      <Filter>obs_control\Source Files\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="obs_control\obs_audio_process_capture.cpp">
+      <Filter>obs_control\Source Files\audio</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="ow-obs.manifest">
+      <Filter>Source Files</Filter>
+    </Manifest>
+  </ItemGroup>
+</Project>

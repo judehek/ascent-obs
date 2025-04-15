@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="public">
+      <UniqueIdentifier>{13482f47-8351-4d8f-94c6-505eb7fd4673}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="public\base">
+      <UniqueIdentifier>{ce96485c-2d5a-4b49-9db6-ed49e1394b5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="public\communications">
+      <UniqueIdentifier>{919bd2ff-3e2d-4a5b-b88c-279b126de30e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal">
+      <UniqueIdentifier>{c375a31e-c7ab-4f8f-8499-86079a58b117}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal\win_ipc">
+      <UniqueIdentifier>{7bb448fe-8a13-47a8-b69b-8d9bb2a0e6ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal\win_ipc\Header Files">
+      <UniqueIdentifier>{647e8ee2-76b5-4eb9-b44f-0d479486e9ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal\win_ipc\Source Files">
+      <UniqueIdentifier>{8036a60a-31f8-4b8b-a018-9e6849a00cbe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal\communications">
+      <UniqueIdentifier>{73c23f60-3b7f-43a9-9ad4-a2292c973b67}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal\base">
+      <UniqueIdentifier>{53228465-fd98-4fc5-9ec2-a406a8ebaa4f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal\communications\Header Files">
+      <UniqueIdentifier>{4219ecd5-0ce2-4fd9-b77f-7365fc234d9d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal\communications\Source Files">
+      <UniqueIdentifier>{fbb49ca3-dd89-435b-80ab-760a8cceb091}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="internal\base\Source Files">
+      <UniqueIdentifier>{cdc244c0-39af-4e8b-a752-f31a94d9795d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\public\base\primitives.h">
+      <Filter>public\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\base\thread.h">
+      <Filter>public\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\base\timer_queue_timer.h">
+      <Filter>public\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\base\macros.h">
+      <Filter>public\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\communications\protocol.h">
+      <Filter>public\communications</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\communications\receiver.h">
+      <Filter>public\communications</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\communications\sender.h">
+      <Filter>public\communications</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\communications\communication_channel.h">
+      <Filter>public\communications</Filter>
+    </ClInclude>
+    <ClInclude Include="src\internal\win_ipc\pipe-windows.h">
+      <Filter>internal\win_ipc\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\internal\win_ipc\pipe.h">
+      <Filter>internal\win_ipc\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\base\critical_section.h">
+      <Filter>public\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\base\critical_section_lock.h">
+      <Filter>public\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\communications\communication_channel_delegate.h">
+      <Filter>public\communications</Filter>
+    </ClInclude>
+    <ClInclude Include="src\public\communications\communication_channel_std.h">
+      <Filter>public\communications</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\internal\win_ipc\pipe-windows.cpp">
+      <Filter>internal\win_ipc\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\internal\communications\communication_channel.cpp">
+      <Filter>internal\communications\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\internal\communications\protocol.cpp">
+      <Filter>internal\communications\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\internal\communications\receiver.cpp">
+      <Filter>internal\communications\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\internal\communications\sender.cpp">
+      <Filter>internal\communications\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\internal\base\thread.cpp">
+      <Filter>internal\base\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\internal\base\timer_queue_timer.cpp">
+      <Filter>internal\base\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\internal\win_ipc\pipe-windows-std.cpp">
+      <Filter>internal\win_ipc\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\internal\communications\communication_channel_std.cpp">
+      <Filter>internal\communications\Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
