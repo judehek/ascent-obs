@@ -20,7 +20,7 @@ include(cmake/32bit.cmake)
 # cmake-format: off
 set_target_properties_obs(inject-helper PROPERTIES FOLDER plugins/win-capture OUTPUT_NAME inject-helper64 MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 # overwolf changes
-set_target_properties_obs(inject-helper PROPERTIES LINK_FLAGS "/MANIFESTUAC:uiAccess='true'\"")
+set_target_properties(inject-helper PROPERTIES LINK_FLAGS "/MANIFESTUAC:uiAccess='true'")
 # --------------------
 # cmake-format: on
 
