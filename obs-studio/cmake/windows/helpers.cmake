@@ -206,15 +206,36 @@ function(_target_install_obs target)
     cmake_path(RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR BASE_DIRECTORY "${OBS_SOURCE_DIR}" OUTPUT_VARIABLE project_path)
 
     set(32bit_project_path "${OBS_SOURCE_DIR}/build_x86/${project_path}")
-    set(target_file "${32bit_project_path}/$<CONFIG>/${target}32.${suffix}")
-    set(target_pdb_file "${32bit_project_path}/$<CONFIG>/${target}32.pdb")
+    
+    # Start Ascent edit
+    # Handle special case for graphics-hook target
+    set(target_name "${target}32")
+    if(target STREQUAL "graphics-hook")
+      set(target_name "ow-graphics-hook32")
+    endif()
+    
+    # Original code:
+    # set(target_file "${32bit_project_path}/$<CONFIG>/${target}32.${suffix}")
+    # set(target_pdb_file "${32bit_project_path}/$<CONFIG>/${target}32.pdb")
+    set(target_file "${32bit_project_path}/$<CONFIG>/${target_name}.${suffix}")
+    set(target_pdb_file "${32bit_project_path}/$<CONFIG>/${target_name}.pdb")
+    # End Ascent edit
+    
     set(comment "Copy ${target} (32-bit) to destination")
 
+    # Start Ascent edit
+    # Original code:
+    # install(
+    #   FILES "${32bit_project_path}/$<CONFIG>/${target}32.${suffix}"
+    #   DESTINATION "${_TIO_DESTINATION}"
+    #   COMPONENT Runtime
+    #   OPTIONAL)
     install(
-      FILES "${32bit_project_path}/$<CONFIG>/${target}32.${suffix}"
+      FILES "${32bit_project_path}/$<CONFIG>/${target_name}.${suffix}"
       DESTINATION "${_TIO_DESTINATION}"
       COMPONENT Runtime
       OPTIONAL)
+    # End Ascent edit
   else()
     set(target_file "$<TARGET_FILE:${target}>")
     set(target_pdb_file "$<TARGET_PDB_FILE:${target}>")
