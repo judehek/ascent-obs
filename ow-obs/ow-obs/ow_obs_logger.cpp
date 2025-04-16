@@ -19,6 +19,7 @@
 #include <dbghelp.h>
 #include "command_line.h"
 #include "switches.h"
+#include <chrono>
 
 #define LOG_FOLDER_PATH "Overwolf/Log/"
 #define CRASHDUMP_FOLDER_PATH "Overwolf/Log/../CrashDumps/ow-obs/"

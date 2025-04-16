@@ -291,9 +291,6 @@
     <ClCompile Include="switches.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="obs_control\obs_qa_flags.cpp">
-      <Filter>obs_control\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="obs_control\scene\window_source.cpp">
       <Filter>obs_control\Source Files\scene</Filter>
     </ClCompile>

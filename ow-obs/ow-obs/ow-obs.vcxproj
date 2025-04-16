@@ -303,7 +303,8 @@ xcopy /Y  $(TargetPath) $(SolutionDir)runtime\bin\64bit</Command>
       <AdditionalManifestFiles>$(ProjectDir)ow-obs.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <PostBuildEvent>
-      <Command>call "%OVERWOLF_SIGN_TOOL%\sign-file.bat"   $(TargetPath)</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_VC2010|x64'">
