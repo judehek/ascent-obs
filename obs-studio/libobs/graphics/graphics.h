@@ -650,7 +650,7 @@ EXPORT void gs_blend_state_push(void);
 EXPORT void gs_blend_state_pop(void);
 EXPORT void gs_reset_blend_state(void);
 
-// ow-obs
+// ascent-obs
 EXPORT void *gs_get_graphics_information(bool);
 
 

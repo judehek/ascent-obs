@@ -157,8 +157,8 @@ char *get_hook_path(bool b64)
 {
 	wchar_t path[MAX_PATH];
 
-	get_programdata_path(path, L"ow-obs-studio-hook\\");
-	make_filename(path, L"ow-graphics-hook", L".dll");
+	get_programdata_path(path, L"ascent-obs-studio-hook\\");
+	make_filename(path, L"ascent-graphics-hook", L".dll");
 
 	if ((b64 && programdata64_hook_exists) ||
 	    (!b64 && programdata32_hook_exists)) {
@@ -167,8 +167,8 @@ char *get_hook_path(bool b64)
 		return path_utf8;
 	}
 
-	return obs_module_file(b64 ? "ow-graphics-hook64.dll"
-				   : "ow-graphics-hook32.dll");
+	return obs_module_file(b64 ? "ascent-graphics-hook64.dll"
+				   : "ascent-graphics-hook32.dll");
 }
 
 /* ------------------------------------------------------------------------- */

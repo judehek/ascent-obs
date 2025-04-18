@@ -212,7 +212,7 @@ pub struct AuxSourceSettings {
     pub scaley: Option<f32>, // Relative height scale (0.0-1.0)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "secondaryFile")] // Match C++ field name
-    pub secondary_file: Option<bool> // Should this source only appear in secondary ow-obs process?
+    pub secondary_file: Option<bool> // Should this source only appear in secondary ascent-obs process?
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]

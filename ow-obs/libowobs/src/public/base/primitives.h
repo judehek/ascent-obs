@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2017 Overwolf Ltd.
 *******************************************************************************/
-#ifndef LIBOWOBS_BASE_PRIMITIVES_H_
-#define LIBOWOBS_BASE_PRIMITIVES_H_
+#ifndef LIBASCENTOBS_BASE_PRIMITIVES_H_
+#define LIBASCENTOBS_BASE_PRIMITIVES_H_
 
 #ifdef _MSC_VER
 #ifndef _STDINT
@@ -21,4 +21,4 @@ typedef unsigned short uint16_t;
 #include <stdint.h>
 #endif
 
-#endif // LIBOWOBS_BASE_PRIMITIVES_H_
+#endif // LIBASCENTOBS_BASE_PRIMITIVES_H_

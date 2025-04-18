@@ -9,7 +9,7 @@ use tokio::process::{Child, ChildStdin, ChildStdout, Command as TokioCommand};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
-/// Handles communication with a running ow-obs.exe process.
+/// Handles communication with a running ascent-obs.exe process.
 #[derive(Debug)]
 pub struct ObsClient {
     child: Child,
@@ -22,7 +22,7 @@ pub struct ObsClient {
 
 // Public interface
 impl ObsClient {
-    /// Starts the ow-obs.exe process and establishes communication channels.
+    /// Starts the ascent-obs.exe process and establishes communication channels.
     pub async fn start(
         ow_obs_path: impl AsRef<Path>,
         channel_id: Option<&str>,
@@ -34,7 +34,7 @@ impl ObsClient {
             .to_str()
             .ok_or(ObsError::InvalidPath)?;
 
-        info!("Starting ow-obs process: {}", ow_obs_path_str);
+        info!("Starting ascent-obs process: {}", ow_obs_path_str);
 
         let mut command = TokioCommand::new(ow_obs_path_str);
         command
@@ -44,14 +44,14 @@ impl ObsClient {
             .stderr(Stdio::piped());
 
         if let Some(id) = channel_id {
-             warn!("Channel ID provided ('{}'), but Rust client primarily uses stdio. Ensure ow-obs handles this.", id);
+             warn!("Channel ID provided ('{}'), but Rust client primarily uses stdio. Ensure ascent-obs handles this.", id);
              command.arg("--channel").arg(id);
         } else {
             info!("Using stdio communication mode.");
         }
 
         let mut child = command.spawn().map_err(ObsError::ProcessStart)?;
-        info!("ow-obs process started (PID: {:?})", child.id());
+        info!("ascent-obs process started (PID: {:?})", child.id());
 
         let stdin = child.stdin.take().ok_or(ObsError::PipeError(
             "Failed to take stdin".to_string(),
@@ -129,7 +129,7 @@ impl ObsClient {
         Ok(())
     }
 
-    /// Shuts down the ow-obs process and associated communication tasks gracefully.
+    /// Shuts down the ascent-obs process and associated communication tasks gracefully.
     pub async fn shutdown(mut self) -> Result<(), ObsError> {
         info!("Shutting down ObsClient (PID: {:?})", self.child.id());
 
@@ -142,16 +142,16 @@ impl ObsClient {
             Err(e) => error!("Failed to join writer task: {}", e),
         }
 
-        info!("Attempting to terminate ow-obs process...");
+        info!("Attempting to terminate ascent-obs process...");
         if let Err(e) = self.child.kill().await {
-             error!("Failed to kill ow-obs process: {}. It might have already exited.", e);
+             error!("Failed to kill ascent-obs process: {}. It might have already exited.", e);
         } else {
-             info!("Kill signal sent to ow-obs process.");
+             info!("Kill signal sent to ascent-obs process.");
         }
 
         match self.child.wait().await {
-            Ok(status) => info!("ow-obs process exited with status: {}", status),
-            Err(e) => error!("Error waiting for ow-obs process exit: {}", e),
+            Ok(status) => info!("ascent-obs process exited with status: {}", status),
+            Err(e) => error!("Error waiting for ascent-obs process exit: {}", e),
         }
 
         if let Err(e) = self.reader_handle.await {
@@ -233,7 +233,7 @@ fn spawn_reader_task(
                 // Attempt to read until a '}' which likely terminates a JSON object.
                 // This isn't foolproof if '}' appears inside strings, but better than read_line.
                 // A more robust solution might involve a custom framing protocol or
-                // expecting exactly one JSON per line from ow-obs.
+                // expecting exactly one JSON per line from ascent-obs.
                 Ok(0) => {
                     info!("Reader task reached EOF on stdout. Exiting.");
                     break; // End of stream
@@ -269,7 +269,7 @@ fn spawn_reader_task(
                                              // Often indicates incomplete object in the buffer or actual syntax error.
                                              // If it's consistently `trailing characters`, it means the previous
                                              // object parsed okay, and we just haven't read the *next* full object yet.
-                                             // We might need more sophisticated buffering/parsing if ow-obs
+                                             // We might need more sophisticated buffering/parsing if ascent-obs
                                              // doesn't guarantee newline delimiters.
                                              // For now, log and try to continue with the next read.
                                             if !e.is_eof() { // Don't log partial reads as errors yet
@@ -349,7 +349,7 @@ fn spawn_stderr_task(stderr: tokio::process::ChildStderr) -> JoinHandle<()> {
                 Ok(_) => {
                     let trimmed_line = line_buf.trim();
                     if !trimmed_line.is_empty() {
-                        warn!("[ow-obs stderr] {}", trimmed_line);
+                        warn!("[ascent-obs stderr] {}", trimmed_line);
                     }
                 }
                 Err(e) => {

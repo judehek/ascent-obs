@@ -87,7 +87,7 @@
     <ClInclude Include="obs_control\commands\command_start.h">
       <Filter>obs_control\Header Files\commands</Filter>
     </ClInclude>
-    <ClInclude Include="ow_obs_logger.h">
+    <ClInclude Include="ascent_obs_logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="obs_control\scene\monitor_source.h">
@@ -179,7 +179,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="ow-obs.rc">
+    <ResourceCompile Include="ascent-obs.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
@@ -216,7 +216,7 @@
     <ClCompile Include="obs_control\commands\command_start.cpp">
       <Filter>obs_control\Source Files\commands</Filter>
     </ClCompile>
-    <ClCompile Include="ow_obs_logger.cpp">
+    <ClCompile Include="ascent_obs_logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="obs_control\scene\monitor_source.cpp">
@@ -308,7 +308,7 @@
     <Text Include="README.md" />
   </ItemGroup>
   <ItemGroup>
-    <Manifest Include="ow-obs.manifest">
+    <Manifest Include="ascent-obs.manifest">
       <Filter>Source Files</Filter>
     </Manifest>
   </ItemGroup>

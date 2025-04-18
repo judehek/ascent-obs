@@ -5,7 +5,7 @@ pub enum ObsError {
     #[error("Invalid path provided")]
     InvalidPath,
 
-    #[error("Failed to start ow-obs process: {0}")]
+    #[error("Failed to start ascent-obs process: {0}")]
     ProcessStart(#[source] std::io::Error),
 
     #[error("Pipe communication error: {0}")]

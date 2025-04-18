@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2018 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_CONTROL_GAZE_OVERLAY_SOURCE_H_
-#define OWOBS_OBS_CONTROL_GAZE_OVERLAY_SOURCE_H_
+#ifndef ASCENTOBS_OBS_CONTROL_GAZE_OVERLAY_SOURCE_H_
+#define ASCENTOBS_OBS_CONTROL_GAZE_OVERLAY_SOURCE_H_
 
 #include "obs_control/scene/source.h"
 #include "game_capture_source_delegate.h"
@@ -37,4 +37,4 @@ private:
   bool compatibility_mode_;
 };
 
-#endif // OWOBS_OBS_CONTROL_GAZE_OVERLAY_SOURCE_H_
+#endif // ASCENTOBS_OBS_CONTROL_GAZE_OVERLAY_SOURCE_H_

@@ -23,7 +23,7 @@ target_sources(
             d3d9-capture.cpp
             d3d9-patches.hpp
             dxgi-capture.cpp
-	    ow-capture.cpp
+	    ascent-capture.cpp
             gl-capture.c
             gl-decs.h
             graphics-hook.c
@@ -53,7 +53,7 @@ target_link_libraries(graphics-hook PRIVATE _graphics-hook)
 include(cmake/32bit.cmake)
 
 # cmake-format: off
-set_target_properties_obs(graphics-hook PROPERTIES FOLDER "plugins/win-capture" OUTPUT_NAME ow-graphics-hook64 MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set_target_properties_obs(graphics-hook PROPERTIES FOLDER "plugins/win-capture" OUTPUT_NAME ascent-graphics-hook64 MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 # cmake-format: on
 
 add_dependencies(win-capture graphics-hook)

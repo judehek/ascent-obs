@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2018 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_CONTROL_OBS_AUDIO_SOURCE_CONTROL_H_
-#define OWOBS_OBS_CONTROL_OBS_AUDIO_SOURCE_CONTROL_H_
+#ifndef ASCENTOBS_OBS_CONTROL_OBS_AUDIO_SOURCE_CONTROL_H_
+#define ASCENTOBS_OBS_CONTROL_OBS_AUDIO_SOURCE_CONTROL_H_
 
 #include <string>
 #include <memory>
@@ -67,4 +67,4 @@ typedef std::shared_ptr<OBSAudioSourceControl> OBSAudioSourceControlPtr;
 
 }; // namespace obs_control
 
-#endif // OWOBS_OBS_CONTROL_OBS_AUDIO_SOURCE_CONTROL_H_
+#endif // ASCENTOBS_OBS_CONTROL_OBS_AUDIO_SOURCE_CONTROL_H_

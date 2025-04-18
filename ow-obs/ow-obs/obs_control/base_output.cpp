@@ -224,7 +224,7 @@ void BaseOutput::OnDelayOutputStopped() {
   auto delegate = advanced_output_->delegate_;
 
   // in case the was quite before we even has the chance to
-  // inject ow-graphics-dll, do not report as error
+  // inject ascent-graphics-dll, do not report as error
   bool report_as_error =
     (delegate->HasDelayGameSource() || delegate->DelayedGameCaptureFailure()) &&
     GetTickCount64() - delay_start_time_ > kReportFailToStartGamedDelay;
@@ -233,7 +233,7 @@ void BaseOutput::OnDelayOutputStopped() {
       "Stop inactive output [id:%d] (as error: %d).",
        identifier_, report_as_error);
 
-  // -999 is just a dummy number that the ow server will ignore it,
+  // -999 is just a dummy number
    // and will use the error string (kErrorStartDelayRecordingError)
   ReportOutputStopped(
     report_as_error ? -999 : 0,

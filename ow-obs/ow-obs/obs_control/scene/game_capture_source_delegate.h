@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2018 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_DELEGATE_H_
-#define OWOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_DELEGATE_H_
+#ifndef ASCENTOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_DELEGATE_H_
+#define ASCENTOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_DELEGATE_H_
 #include "source.h"
 
 class GameCaptureSourceDelegate : public Source::Delegate {
@@ -15,4 +15,4 @@ public:
                                          const char* error) = 0;
 };
 
-#endif // OWOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_DELEGATE_H_
+#endif // ASCENTOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_DELEGATE_H_

@@ -1,9 +1,4 @@
-﻿/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2017 Overwolf Ltd.
-*******************************************************************************/
-#include <windows.h>
+﻿#include <windows.h>
 #include <obs-data.h>
 #include <obs.hpp>
 #include <obs-audio-controls.h>
@@ -13,7 +8,7 @@
 
 #include "command_line.h"
 #include "server.h"
-#include "ow_obs_logger.h"
+#include "ascent_obs_logger.h"
 
 //-----------------------------------------------------------------------------
 extern "C" {
@@ -112,7 +107,7 @@ static void load_debug_privilege(void) {
 
 //-----------------------------------------------------------------------------
 int main() {
-  //MessageBoxA(NULL, "WinMain", "ow-obs", MB_OK);
+  //MessageBoxA(NULL, "WinMain", "ascent-obs", MB_OK);
 
   int ret = 0;
   SetErrorMode(SEM_FAILCRITICALERRORS);
@@ -128,7 +123,7 @@ int main() {
     }
 
     CommandLine::Init();
-    OWOBSLogger logger;
+    ASCENTOBSLogger logger;
 
     if (!SetHighDPIv2Scaling()) {
       SetDPIAware();

@@ -271,7 +271,7 @@ void obs_output_destroy(obs_output_t *output)
 	    if (output->valid && active(output)) {
 	      obs_output_actual_stop(output, true, 0);
 	      os_event_wait(output->stopping_event);
-	    } else { // fix close ow-obs with non active output (hang on closing)
+	    } else { // fix close ascent-obs with non active output (hang on closing)
 	      os_event_timedwait(output->stopping_event, 1000);
     	}
 

@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2017 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OW_OBS_MESSAGE_LOOP_H_
-#define OW_OBS_MESSAGE_LOOP_H_
+#ifndef ASCENT_OBS_MESSAGE_LOOP_H_
+#define ASCENT_OBS_MESSAGE_LOOP_H_
 
 #include <memory>
 #include <thread>
@@ -30,4 +30,4 @@ private:
 
 };
 
-#endif // OW_OBS_MESSAGE_LOOP_H_
+#endif // ASCENT_OBS_MESSAGE_LOOP_H_

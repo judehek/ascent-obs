@@ -355,7 +355,7 @@ struct gs_exports {
 	void (*device_unregister_loss_callbacks)(gs_device_t *device,
 						 void *data);
 
-	// ow-obs
+	// ascent-obs
 	void *(*get_graphics_information)(bool refresh);
 
 #elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)

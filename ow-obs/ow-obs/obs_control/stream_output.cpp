@@ -121,15 +121,13 @@ bool StreamOutput::Initialize(OBSData& error_result, const char* type) {
         protocol::events::INIT_ERROR_STREAM_START_NO_SERVICE_ERROR);
       return false;
     }
-
-    const char *server_type = obs_service_get_output_type(service);
+    // Change this line from obs_service_get_output_type to obs_service_get_preferred_output_type
+    const char *server_type = obs_service_get_preferred_output_type(service);
     if (!server_type) {
       server_type = "rtmp_output";
     }
-
     output_ =
       obs_output_create(server_type, "adv_stream", nullptr, nullptr);
-
     if (output_ == nullptr) {
       blog(LOG_ERROR, "Fail to create streaming output");
       obs_data_set_int(error_result,
@@ -140,15 +138,12 @@ bool StreamOutput::Initialize(OBSData& error_result, const char* type) {
     obs_output_release(output_);
     obs_output_set_service(output_, service);
   }
-
-
   if (!ConnectSignals()) {
     obs_data_set_int(error_result,
       protocol::kErrorCodeField,
       protocol::events::INIT_ERROR_FAILED_CREATING_OUTPUT_SIGNALS);
     return false;
   }
-
   return true;
 }
 
@@ -243,7 +238,7 @@ bool StreamOutput::Start(int identifier,
 
   identifier_ = -1;
 
-  const char *type = obs_service_get_output_type(service_);
+  const char *type = obs_service_get_preferred_output_type(service_);
   const char *error = obs_output_get_last_error(output_);
   bool has_last_error = error && *error;
 

@@ -31,7 +31,7 @@
 
 #include <graphics/graphics-information.h>
 
-//ow-obs
+//ascent-obs
 static graphics_information graphics_information_obj = {};
 
 struct UnsupportedHWError : HRError {
@@ -3649,7 +3649,7 @@ extern "C" EXPORT bool device_can_adapter_fast_clear(gs_device_t *device)
 	return device->fastClearSupported;
 }
 
-//ow-obs
+//ascent-obs
 extern "C" EXPORT void *get_graphics_information(bool refresh)
 {
 	if (refresh) {

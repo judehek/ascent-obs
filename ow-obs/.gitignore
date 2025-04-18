@@ -4,7 +4,7 @@
 /Debug/
 /Release/
 *.suo
-/ow-obs.opensdf
+/ascent-obs.opensdf
 /libshared/Debug/
 /libowobs/Debug/
 /libowobs/Release_VC2010/

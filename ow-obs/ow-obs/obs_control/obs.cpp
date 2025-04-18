@@ -384,7 +384,7 @@ bool OBS::DoInitVideo(OBSData& video_settings,
 
   blog(LOG_INFO, "---------------------------------");
   blog(LOG_INFO,
-    "ow-obs video settings reset:\n"
+    "ascent-obs video settings reset:\n"
     "\tbase resolution:   %dx%d\n"
     "\toutput resolution: %dx%d\n"
     "\tfps:               %d\n",
@@ -533,7 +533,7 @@ bool OBS::InitScene(OBSData& scene_settings, OBSData& error_result) {
   libowobs::CriticalSectionLock locker(sync_);
 
   if (!scene_.get()) {
-    scene_.reset(new SceneContext(obs_scene_create("ow obs scene")));
+    scene_.reset(new SceneContext(obs_scene_create("ascent obs scene")));
 
     if (!scene_->get_scene()) {
       blog(LOG_ERROR, kErrorScenCreate);
@@ -615,7 +615,7 @@ bool OBS::InitScene(OBSData& scene_settings, OBSData& error_result) {
       (game_source_.get() && game_source_->did_start_capture())) {
       InitTobiiGazeSource(tobii_source);
     } else {
-      // create tobii only after game started: workaround for OW-4567
+      // create tobii only after game started: workaround
       blog(LOG_INFO, "waiting for game before init tobii");
       pending_tobii_ = tobii_source;
       obs_data_release(pending_tobii_);

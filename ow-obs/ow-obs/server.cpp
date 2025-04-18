@@ -42,7 +42,7 @@ int Server::Run(CommandLine* options) {
     blog(LOG_INFO, "Initializing server");
     Server server;
     if (!server.Init(options)) {
-      blog(LOG_ERROR, "ow-obs initialization error");
+      blog(LOG_ERROR, "ascent-obs initialization error");
       return -1;
     }
 
@@ -153,7 +153,7 @@ void Server::Shutdown() {
 bool Server::Init(CommandLine* options) {
   if (options->HasSwitch(kCmdLineParamDebuggerAttach)) {
     ::MessageBox(NULL,
-                 L"ow-obs debugger attach message",
+                 L"ascent-obs debugger attach message",
                  L"DebuggerAttach",
                  MB_OK);
   }

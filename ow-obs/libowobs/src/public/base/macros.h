@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2017 Overwolf Ltd.
 *******************************************************************************/
-#ifndef LIBOWOBS_BASE_MACROS_H_
-#define LIBOWOBS_BASE_MACROS_H_
+#ifndef LIBASCENTOBS_BASE_MACROS_H_
+#define LIBASCENTOBS_BASE_MACROS_H_
 
 // Put this in the private: declarations for a class to be uncopyable.
 #define DISALLOW_COPY(TypeName) \
@@ -42,4 +42,4 @@
 template <typename T, size_t N> char(&ArraySizeHelper(T(&array)[N]))[N];
 #define arraysize(array) (sizeof(ArraySizeHelper(array)))
 
-#endif // LIBOWOBS_BASE_MACROS_H_
+#endif // LIBASCENTOBS_BASE_MACROS_H_

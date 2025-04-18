@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2018 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_OBS_CONTROL_REPLAY_OUTPUT_H_
-#define OWOBS_OBS_OBS_CONTROL_REPLAY_OUTPUT_H_
+#ifndef ASCENTOBS_OBS_OBS_CONTROL_REPLAY_OUTPUT_H_
+#define ASCENTOBS_OBS_OBS_CONTROL_REPLAY_OUTPUT_H_
 #include "base_output.h"
 
 namespace obs_control {
@@ -98,4 +98,4 @@ private:
   libowobs::CriticalSection sync_;
 }; // class ReplayOutput
 }; // namespace obs_control
-#endif //OWOBS_OBS_OBS_CONTROL_REPLAY_OUTPUT_H_
+#endif //ASCENTOBS_OBS_OBS_CONTROL_REPLAY_OUTPUT_H_

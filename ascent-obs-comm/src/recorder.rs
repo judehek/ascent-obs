@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 // Counter for generating simple identifiers when needed (e.g., for queries)
 static NEXT_IDENTIFIER: AtomicI32 = AtomicI32::new(1);
 
-/// A high-level client for controlling an ow-obs recording process.
+/// A high-level client for controlling an ascent-obs recording process.
 #[derive(Debug)]
 pub struct Recorder {
     client: ObsClient,
@@ -22,11 +22,11 @@ pub struct Recorder {
 pub type EventReceiver = mpsc::Receiver<Result<EventNotification, ObsError>>;
 
 impl Recorder {
-    /// Starts the ow-obs.exe process and returns a `Recorder` instance
+    /// Starts the ascent-obs.exe process and returns a `Recorder` instance
     /// along with a channel receiver for events.
     ///
     /// # Arguments
-    /// * `ow_obs_path` - Path to the ow-obs.exe executable.
+    /// * `ow_obs_path` - Path to the ascent-obs.exe executable.
     /// * `buffer_size` - Size of the internal channel buffer for incoming events.
     pub async fn start(
         ow_obs_path: impl AsRef<Path>,
@@ -111,7 +111,7 @@ impl Recorder {
         self.client.send_command(CMD_SET_VOLUME, None, payload).await
     }
 
-    /// Informs ow-obs about a change in game focus.
+    /// Informs ascent-obs about a change in game focus.
     ///
     /// # Arguments
     /// * `game_foreground` - True if the game window is now in the foreground.
@@ -218,7 +218,7 @@ impl Recorder {
             .await
     }
 
-    /// Sends the shutdown command to ow-obs and waits for the process and tasks to terminate.
+    /// Sends the shutdown command to ascent-obs and waits for the process and tasks to terminate.
     /// Consumes the `Recorder` instance.
     pub async fn shutdown(self) -> Result<(), ObsError> {
         info!("Sending SHUTDOWN command");

@@ -4,8 +4,8 @@
 * Copyright (c) 2017 Overwolf Ltd.
 ******************************************************************************/
 
-#ifndef OWOBS_SERVER_H_
-#define OWOBS_SERVER_H_
+#ifndef ASCENTOBS_SERVER_H_
+#define ASCENTOBS_SERVER_H_
 
 //-----------------------------------------------------------------------------
 
@@ -60,4 +60,4 @@ private:
   DISALLOW_COPY_AND_ASSIGN(Server);
 };
 
-#endif // OWOBS_SERVER_H_
+#endif // ASCENTOBS_SERVER_H_

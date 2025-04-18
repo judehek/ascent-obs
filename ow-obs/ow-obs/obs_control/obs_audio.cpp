@@ -153,7 +153,7 @@ bool OBSAudioControl::ResetAudio(OBSData& audio_settings) {
 void OBSAudioControl::InitAudioSources(OBSData& audio_settings,
                                        AdvancedOutput* advanced_output) {
   try {
-    // MessageBoxA(NULL, "InitAudioSources", "ow-obs", MB_OK);
+    // MessageBoxA(NULL, "InitAudioSources", "ascent-obs", MB_OK);
 
     InitOBSAudioDevicesList();
 
@@ -401,7 +401,7 @@ void OBSAudioControl::ResetAudioDefaultDevice(const char* source_id,
 void OBSAudioControl::InitExtraAudioSources(OBSData& audio_settings,
                                             OBSData& audio_extra_options) {
   UNREFERENCED_PARAMETER(audio_settings);
-  // MessageBoxA(NULL, "WinMain", "ow-obs", MB_OK);
+  // MessageBoxA(NULL, "WinMain", "ascent-obs", MB_OK);
   if (!audio_extra_options.Get()) {
     return;
   }

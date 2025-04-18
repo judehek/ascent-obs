@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2018 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_CONTROL_UTILS_H_
-#define OWOBS_OBS_CONTROL_UTILS_H_
+#ifndef ASCENTOBS_OBS_CONTROL_UTILS_H_
+#define ASCENTOBS_OBS_CONTROL_UTILS_H_
 
 #include <obs.hpp>
 
@@ -40,4 +40,4 @@ public:
   inline obs_display_t* get() { return display; }
 };
 
-#endif // OWOBS_OBS_CONTROL_UTILS_H_
+#endif // ASCENTOBS_OBS_CONTROL_UTILS_H_

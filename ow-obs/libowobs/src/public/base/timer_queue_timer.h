@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2017 Overwolf Ltd.
 *******************************************************************************/
-#ifndef LIBOWOBS_TIMER_QUEUE_TIMER_H_
-#define LIBOWOBS_TIMER_QUEUE_TIMER_H_
+#ifndef LIBASCENTOBS_TIMER_QUEUE_TIMER_H_
+#define LIBASCENTOBS_TIMER_QUEUE_TIMER_H_
 
 #include "macros.h"
 
@@ -36,4 +36,4 @@ private:
 
 };
 
-#endif // LIBOWOBS_TIMER_QUEUE_TIMER_H_
+#endif // LIBASCENTOBS_TIMER_QUEUE_TIMER_H_

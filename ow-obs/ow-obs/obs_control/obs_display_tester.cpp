@@ -29,7 +29,7 @@ namespace obs_control {
     WNDCLASS wc;
     HINSTANCE instance = GetModuleHandle(NULL);
     memset(&wc, 0, sizeof(wc));
-    wc.lpszClassName = TEXT("OW-OBS-DISPLAY");
+    wc.lpszClassName = TEXT("ASCENT-OBS-DISPLAY");
     wc.hbrBackground = (HBRUSH)COLOR_WINDOW;
     wc.hInstance = instance;
     wc.lpfnWndProc = (WNDPROC)DefWindowProc;
@@ -37,8 +37,8 @@ namespace obs_control {
     if (!RegisterClass(&wc))
       return 0;
 
-    return CreateWindow(TEXT("OW-OBS-DISPLAY"),
-      TEXT("OW-OBS-DISPLAY-WINDOW"),
+    return CreateWindow(TEXT("ASCENT-OBS-DISPLAY"),
+      TEXT("ASCENT-OBS-DISPLAY-WINDOW"),
       WS_OVERLAPPEDWINDOW,
       0, 0, 120, 120,
       NULL, NULL, instance, NULL);

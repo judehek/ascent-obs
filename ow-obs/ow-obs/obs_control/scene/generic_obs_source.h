@@ -4,8 +4,8 @@
 * Copyright (c) 2020 Overwolf Ltd.
 *******************************************************************************/
 
-#ifndef OWOBS_OBS_CONTROL_GENERIC_OBS_SOURCE_H_
-#define OWOBS_OBS_CONTROL_GENERIC_OBS_SOURCE_H_
+#ifndef ASCENTOBS_OBS_CONTROL_GENERIC_OBS_SOURCE_H_
+#define ASCENTOBS_OBS_CONTROL_GENERIC_OBS_SOURCE_H_
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -44,4 +44,4 @@ protected:
   std::string name_;
 };
 
-#endif // OWOBS_OBS_CONTROL_GENERIC_OBS_SOURCE_H_
+#endif // ASCENTOBS_OBS_CONTROL_GENERIC_OBS_SOURCE_H_

@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2017 Overwolf Ltd.
 *******************************************************************************/
-#ifndef LIBOWOBS_COMMUNICATIONS_RECEIVER_H_
-#define LIBOWOBS_COMMUNICATIONS_RECEIVER_H_
+#ifndef LIBASCENTOBS_COMMUNICATIONS_RECEIVER_H_
+#define LIBASCENTOBS_COMMUNICATIONS_RECEIVER_H_
 
 #include <memory>
 #include <string>
@@ -41,4 +41,4 @@ private:
 
 };
 
-#endif // LIBOWOBS_COMMUNICATIONS_RECEIVER_H_
+#endif // LIBASCENTOBS_COMMUNICATIONS_RECEIVER_H_

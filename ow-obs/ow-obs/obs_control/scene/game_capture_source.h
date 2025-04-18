@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2018 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_H_
-#define OWOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_H_
+#ifndef ASCENTOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_H_
+#define ASCENTOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_H_
 
 #include "obs_control/scene/source.h"
 #include "game_capture_source_delegate.h"
@@ -71,4 +71,4 @@ private:
   obs_flip_type flip_type_ = obs_flip_type::OBS_FLIP_NONE;
 };
 
-#endif // OWOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_H_
+#endif // ASCENTOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_H_

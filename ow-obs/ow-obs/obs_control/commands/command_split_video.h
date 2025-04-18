@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2019 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_CONTROL_COMMANDS_COMMAND_SPLIT_VIDEO_H_
-#define OWOBS_OBS_CONTROL_COMMANDS_COMMAND_SPLIT_VIDEO_H_
+#ifndef ASCENTOBS_OBS_CONTROL_COMMANDS_COMMAND_SPLIT_VIDEO_H_
+#define ASCENTOBS_OBS_CONTROL_COMMANDS_COMMAND_SPLIT_VIDEO_H_
 
 #include <obs.hpp>
 
@@ -24,4 +24,4 @@ public:
 
 };
 
-#endif // OWOBS_OBS_CONTROL_COMMANDS_COMMAND_SPLIT_VIDEO_H_#pragma once
+#endif // ASCENTOBS_OBS_CONTROL_COMMANDS_COMMAND_SPLIT_VIDEO_H_#pragma once

@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 
-// ow-obs
+// ascent-obs
 struct adapter_info {
 	int index;
 	std::string name;

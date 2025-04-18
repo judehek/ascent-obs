@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2015 Overwolf Ltd.
 *********************************************************************************************/
-#ifndef LIBOWOBS_BASE_CRITICAL_SECTION_LOCK_H_
-#define LIBOWOBS_BASE_CRITICAL_SECTION_LOCK_H_
+#ifndef LIBASCENTOBS_BASE_CRITICAL_SECTION_LOCK_H_
+#define LIBASCENTOBS_BASE_CRITICAL_SECTION_LOCK_H_
 
 #include "critical_section.h"
 
@@ -32,4 +32,4 @@ private:
 };
 }; // namespace libowobs
 
-#endif // LIBOWOBS_BASE_CRITICAL_SECTION_LOCK_H_
+#endif // LIBASCENTOBS_BASE_CRITICAL_SECTION_LOCK_H_

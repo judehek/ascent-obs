@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2017 Overwolf Ltd.
 *******************************************************************************/
-#ifndef LIBOWOBS_BASE_THREAD_H_
-#define LIBOWOBS_BASE_THREAD_H_
+#ifndef LIBASCENTOBS_BASE_THREAD_H_
+#define LIBASCENTOBS_BASE_THREAD_H_
 
 #include <memory>
 #include <queue>
@@ -71,4 +71,4 @@ typedef std::shared_ptr<Thread> SharedThreadPtr;
 };
 
 
-#endif // LIBOWOBS_BASE_THREAD_H_
+#endif // LIBASCENTOBS_BASE_THREAD_H_

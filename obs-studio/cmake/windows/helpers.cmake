@@ -211,7 +211,7 @@ function(_target_install_obs target)
     # Handle special case for graphics-hook target
     set(target_name "${target}32")
     if(target STREQUAL "graphics-hook")
-      set(target_name "ow-graphics-hook32")
+      set(target_name "ascent-graphics-hook32")
     endif()
     
     # Original code:

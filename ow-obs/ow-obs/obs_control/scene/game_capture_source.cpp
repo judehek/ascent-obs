@@ -120,7 +120,7 @@ bool GameCaptureSource::Create(OBSData& data,
 
   source_.reset(new SourceContext(
     obs_source_create("game_capture",
-    "OW Game capture",
+    "Ascent Game capture",
     game_settings,
     nullptr)));
 

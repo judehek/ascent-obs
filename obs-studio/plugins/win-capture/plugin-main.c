@@ -145,7 +145,7 @@ bool obs_module_load(void)
 	graphics_uses_d3d11 = gs_get_device_type() == GS_DEVICE_DIRECT3D_11;
 	obs_leave_graphics();
 
-#if _WIN32 // ow-obs
+#if _WIN32 // ascent-obs
 	graphics_uses_d3d11 = true;
 #endif
 	if (graphics_uses_d3d11) {

@@ -4,8 +4,8 @@
 * Copyright (c) 2021 Overwolf Ltd.
 *******************************************************************************/
 
-#ifndef OWOBS_OBS_CONTROL_WINDOW_SOURCE_H_
-#define OWOBS_OBS_CONTROL_WINDOW_SOURCE_H_
+#ifndef ASCENTOBS_OBS_CONTROL_WINDOW_SOURCE_H_
+#define ASCENTOBS_OBS_CONTROL_WINDOW_SOURCE_H_
 
 //-----------------------------------------------------------------------------
 
@@ -48,4 +48,4 @@ private:
 
 };
 
-#endif // OWOBS_OBS_CONTROL_WINDOW_SOURCE_H_
+#endif // ASCENTOBS_OBS_CONTROL_WINDOW_SOURCE_H_

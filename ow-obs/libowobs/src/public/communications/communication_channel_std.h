@@ -4,8 +4,8 @@
 * Copyright (c) 2021 Overwolf Ltd.
 ******************************************************************************/
 
-#ifndef LIBOWOBS_COMMUNICATIONS_COMMUNICATION_CHANNEL_STD_H_
-#define LIBOWOBS_COMMUNICATIONS_COMMUNICATION_CHANNEL_STD_H_
+#ifndef LIBASCENTOBS_COMMUNICATIONS_COMMUNICATION_CHANNEL_STD_H_
+#define LIBASCENTOBS_COMMUNICATIONS_COMMUNICATION_CHANNEL_STD_H_
 
 //-----------------------------------------------------------------------------
 
@@ -120,4 +120,4 @@ private:
 
 };
 
-#endif // LIBOWOBS_COMMUNICATIONS_COMMUNICATION_CHANNEL_STD_H_
+#endif // LIBASCENTOBS_COMMUNICATIONS_COMMUNICATION_CHANNEL_STD_H_

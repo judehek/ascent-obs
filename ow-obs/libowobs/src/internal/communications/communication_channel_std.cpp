@@ -85,7 +85,7 @@ bool CommunicationChannelStd::Shutdown(DWORD timeout /*= INFINITE*/) {
 
   }
 
-  os_process_pipe_destroy(pipe_, timeout); // wait to the ow-obs process to finish
+  os_process_pipe_destroy(pipe_, timeout); // wait to the ascent-obs process to finish
   pipe_ = NULL;
 
   is_init_ = false;

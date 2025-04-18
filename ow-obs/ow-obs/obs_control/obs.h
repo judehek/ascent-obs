@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2017 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_CONTROL_OBS_H_
-#define OWOBS_OBS_CONTROL_OBS_H_
+#ifndef ASCENTOBS_OBS_CONTROL_OBS_H_
+#define ASCENTOBS_OBS_CONTROL_OBS_H_
 
 #include <memory>
 #include <obs.hpp>
@@ -344,4 +344,4 @@ private:
 
 }; // namespace obs_control
 
-#endif // OWOBS_OBS_CONTROL_OBS_H_
+#endif // ASCENTOBS_OBS_CONTROL_OBS_H_

@@ -3,8 +3,8 @@
 *
 * Copyright (c) 2018 Overwolf Ltd.
 *******************************************************************************/
-#ifndef OWOBS_OBS_CONTROL_SOURCE_H_
-#define OWOBS_OBS_CONTROL_SOURCE_H_
+#ifndef ASCENTOBS_OBS_CONTROL_SOURCE_H_
+#define ASCENTOBS_OBS_CONTROL_SOURCE_H_
 
 #include <memory>
 #include "utils.h"
@@ -65,4 +65,4 @@ protected:
   obs_scene_item* source_item_;
 };
 
-#endif // OWOBS_OBS_CONTROL_SOURCE_H_
+#endif // ASCENTOBS_OBS_CONTROL_SOURCE_H_

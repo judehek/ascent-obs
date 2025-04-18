@@ -2356,7 +2356,7 @@ bool hook_vulkan(void)
 }
 
 /* ======================================================================== */
-/* OW present
+/* ASCENT present
 */
 bool capture_vulkan(void *p_queue, const void *p_info, void *vk_image)
 {

@@ -59,7 +59,7 @@ bool GazeOverlaySource::Create(OBSData& data,
 
   source_.reset(new SourceContext(
       obs_source_create("game_capture",
-                        "OW Tobii gaze capture",
+                        "Ascent Tobii gaze capture",
                         game_settings,
                         nullptr)));
 

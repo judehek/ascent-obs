@@ -19,7 +19,7 @@ set(OBS_VERSION_OVERRIDE
   ```
  /src/
      /obs-studio
-     /ow-obs
+     /ascent-obs
      /obs-build-dependencies
 ```
 

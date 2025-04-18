@@ -1512,7 +1512,7 @@ EXPORT struct obs_source_frame *obs_source_get_frame(obs_source_t *source);
 EXPORT void obs_source_release_frame(obs_source_t *source,
 				     struct obs_source_frame *frame);
 
-/** ow-obs update game capture source state*/
+/** ascent-obs update game capture source state*/
 EXPORT void obs_source_update_capture(obs_source_t *source, bool capture,
 				      bool sli_compatibility,
 				      const char *error);
