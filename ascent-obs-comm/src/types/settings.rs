@@ -162,7 +162,6 @@ pub struct WindowCaptureSourceSettings {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[serde(rename_all = "camelCase")]
 pub struct GameSourceSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub process_id: Option<i32>, // Process ID to capture

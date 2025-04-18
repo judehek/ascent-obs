@@ -121,8 +121,8 @@ $FileMappings = @{
     'build_x64\rundir\Release\data\obs-plugins\win-capture\get-graphics-offsets64.exe' = 'data\obs-plugins\win-capture'
     'build_x64\rundir\Release\data\obs-plugins\win-capture\inject-helper32.exe'       = 'data\obs-plugins\win-capture'
     'build_x64\rundir\Release\data\obs-plugins\win-capture\inject-helper64.exe'       = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\Release\data\obs-plugins\win-capture\ow-graphics-hook32.dll'     = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\Release\data\obs-plugins\win-capture\ow-graphics-hook64.dll'     = 'data\obs-plugins\win-capture'
+    'build_x64\rundir\Release\data\obs-plugins\win-capture\ascent-graphics-hook32.dll'     = 'data\obs-plugins\win-capture'
+    'build_x64\rundir\Release\data\obs-plugins\win-capture\ascent-graphics-hook64.dll'     = 'data\obs-plugins\win-capture'
     'build_x64\rundir\Release\data\obs-plugins\win-capture\package.json'              = 'data\obs-plugins\win-capture'
 
     # --- Files from source root structure (libobs/plugins) ---
