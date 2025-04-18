@@ -111,7 +111,7 @@ char *get_common_program_file_module(const char *file)
 		return 0;
 	}
 	char path[MAX_PATH * 2] = {0};
-	snprintf(path, MAX_PATH * 2, "%s\\overwolf\\ascent-obs",
+	snprintf(path, MAX_PATH * 2, "%s\\ascent\\ascent-obs",
 		 commonfile_folder_path);
 	dstr_copy(&output, path);
 	if (!dstr_is_empty(&output) && dstr_end(&output) != '/' && *file)

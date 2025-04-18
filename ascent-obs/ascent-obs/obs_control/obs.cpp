@@ -625,7 +625,7 @@ bool OBS::InitScene(OBSData& scene_settings, OBSData& error_result) {
   /////////////////////////////////////////////////////////////////////////////
   CreateGenericSourcesFromCustomParam(generic_sources_ow);
  
-  // (259) allow adding custom sources directly from the JS (and not via overwolf)
+  // (259) allow adding custom sources directly from the JS
   if (custom_source_setting_) {
     CreateGenericSourcesFromCustomParam(custom_source_setting_);
     custom_source_setting_ = nullptr;

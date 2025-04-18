@@ -2858,7 +2858,7 @@ EXPORT void obs_source_frame_copy(struct obs_source_frame *dst,
 EXPORT enum obs_icon_type obs_source_get_icon_type(const char *id);
 
 
-// ow obs graphics/graphics-information.h
+// ascent obs graphics/graphics-information.h
 EXPORT void* get_graphics_information(bool refresh, int *error);
 
 #ifdef __cplusplus
