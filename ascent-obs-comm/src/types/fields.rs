@@ -1,0 +1,129 @@
+// src/types/fields.rs
+
+// --- Command/Event Structure Fields ---
+pub const FIELD_CMD: &str = "cmd";
+pub const FIELD_IDENTIFIER: &str = "identifier";
+pub const FIELD_RECORDER_TYPE: &str = "recorder_type";
+pub const FIELD_EVENT: &str = "event";
+pub const FIELD_ERROR_CODE: &str = "code";
+pub const FIELD_ERROR_DESC: &str = "desc";
+
+// --- Settings Fields ---
+pub const FIELD_VIDEO_SETTINGS: &str = "video_settings";
+pub const FIELD_AUDIO_SETTINGS: &str = "audio_settings";
+pub const FIELD_FILE_OUTPUT: &str = "file_output";
+pub const FIELD_SOURCES: &str = "sources"; // Corresponds to C++ kSettingsScene
+pub const FIELD_REPLAY: &str = "replay";
+pub const FIELD_STREAMING: &str = "streaming";
+pub const FIELD_VIDEO_ENCODER: &str = "video_encoder";
+pub const FIELD_EXTRA_OPTIONS: &str = "extra_options";
+pub const FIELD_AUDIO_OUTPUT: &str = "output"; // Nested within audio_settings
+pub const FIELD_AUDIO_INPUT: &str = "input"; // Nested within audio_settings
+pub const FIELD_SOURCE_MONITOR: &str = "monitor";
+pub const FIELD_SOURCE_WINDOW_CAPTURE: &str = "window_capture";
+pub const FIELD_SOURCE_GAME: &str = "game";
+pub const FIELD_SOURCE_BRB: &str = "brb";
+pub const FIELD_SOURCE_AUX: &str = "auxSources";
+pub const FIELD_SOURCE_TOBII: &str = "tobii";
+pub const FIELD_FPS: &str = "fps";
+pub const FIELD_BASE_WIDTH: &str = "base_width";
+pub const FIELD_BASE_HEIGHT: &str = "base_height";
+pub const FIELD_OUTPUT_WIDTH: &str = "output_width";
+pub const FIELD_OUTPUT_HEIGHT: &str = "output_height";
+pub const FIELD_COMPATIBILITY_MODE: &str = "compatibility_mode";
+pub const FIELD_GAME_CURSOR: &str = "game_cursor";
+pub const FIELD_SAMPLE_RATE: &str = "sample_rate";
+pub const FIELD_MONO: &str = "mono";
+pub const FIELD_DEVICE_ID: &str = "device_id";
+pub const FIELD_VOLUME: &str = "volume";
+pub const FIELD_ENCODER_ID: &str = "id"; // Used within video_encoder object
+pub const FIELD_FILENAME: &str = "filename";
+pub const FIELD_MAX_FILE_SIZE: &str = "max_file_size_bytes";
+pub const FIELD_ENABLE_ON_DEMAND_SPLIT: &str = "enable_on_demand_spilt_video"; // Corrected C++ typo
+pub const FIELD_INCLUDE_FULL_VIDEO: &str = "include_full_video";
+pub const FIELD_MAX_TIME_SEC: &str = "max_time_sec"; // Used in replay/split/file_output
+pub const FIELD_PROCESS_ID: &str = "process_id";
+pub const FIELD_FOREGROUND: &str = "foreground";
+pub const FIELD_ALLOW_TRANSPARENCY: &str = "allow_transparency";
+pub const FIELD_FLIP_TYPE: &str = "flip_type"; // Used in game source settings
+pub const FIELD_IS_MINIMIZED: &str = "is_minimized"; // Used in game focus changed
+pub const FIELD_PATH: &str = "path"; // Used in BRB, replay capture, etc.
+pub const FIELD_COLOR: &str = "color"; // Used in BRB
+pub const FIELD_HEAD_DURATION: &str = "head_duration"; // Used in replay capture start
+pub const FIELD_THUMBNAIL_FOLDER: &str = "thumbnail_folder"; // Used in replay capture start/ready
+pub const FIELD_WINDOW: &str = "window"; // Used in Tobii source
+pub const FIELD_VISIBLE: &str = "visible"; // Used in Tobii source
+pub const FIELD_STREAM_KEY: &str = "stream_key"; // Used in streaming settings
+pub const FIELD_SERVER_URL: &str = "server_url"; // Used in streaming settings
+pub const FIELD_STREAMING_TYPE: &str = "type"; // Used in streaming settings ("Custom", "Twitch", etc.)
+pub const FIELD_USE_AUTH: &str = "use_auth"; // Streaming custom auth
+pub const FIELD_USERNAME: &str = "username"; // Streaming custom auth
+pub const FIELD_PASSWORD: &str = "password"; // Streaming custom auth
+pub const FIELD_USE_DEVICE_TIMING: &str = "use_device_timing"; // Audio source V2
+pub const FIELD_AUDIO_DEVICE_TYPE: &str = "type"; // Audio source V2 (0=out, 1=in for default)
+pub const FIELD_AUDIO_DEVICE_ENABLE: &str = "enable"; // Audio source V2
+pub const FIELD_AUDIO_TRACKS: &str = "tracks"; // Audio source settings V2
+pub const FIELD_AUDIO_SOURCES: &str = "audio_sources"; // Audio extra_options V2
+pub const FIELD_AUDIO_PROCESS_CAPTURE: &str = "audio_capture_process"; // Legacy audio capture process list
+pub const FIELD_AUDIO_PROCESS_CAPTURE2: &str = "audio_capture_process2"; // New audio capture process list
+pub const FIELD_PROCESS_NAME: &str = "process_name"; // For audio process capture settings
+pub const FIELD_SEPARATE_TRACKS: &str = "separate_tracks"; // Audio extra option
+pub const FIELD_SOURCE_ID: &str = "sourceId"; // Used in aux source settings
+pub const FIELD_SOURCE_NAME: &str = "name"; // Used in aux source settings, audio source settings
+pub const FIELD_SOURCE_PARAMETERS: &str = "parameters"; // Used in aux source settings
+pub const FIELD_SOURCE_TRANSFORM: &str = "transform"; // Used in aux source settings (docking)
+pub const FIELD_POSX: &str = "posx"; // Used in aux source settings
+pub const FIELD_POSY: &str = "posy"; // Used in aux source settings
+pub const FIELD_SCALEX: &str = "scalex"; // Used in aux source settings
+pub const FIELD_SCALEY: &str = "scaley"; // Used in aux source settings
+pub const FIELD_SECONDARY_FILE: &str = "secondaryFile"; // Used in aux source settings
+pub const FIELD_MONITOR_HANDLE: &str = "monitor_handle"; // Used in monitor source settings
+pub const FIELD_WINDOW_HANDLE: &str = "window_handle"; // Used in window source settings
+pub const FIELD_CURSOR: &str = "cursor"; // Used in monitor/window source settings
+pub const FIELD_KEEP_GAME_RECORDING: &str = "keep_game_recording"; // Used in scene settings
+pub const FIELD_ENCODER_CUSTOM_PARAMETERS: &str = "encoder_custom_parameters"; // Video extra options
+pub const FIELD_CUSTOM_PARAMETERS: &str = "custom_parameters"; // Video extra options
+pub const FIELD_COLOR_SPACE: &str = "color_space"; // Video extra options
+pub const FIELD_COLOR_FORMAT: &str = "color_format"; // Video extra options
+pub const FIELD_FRAGMENTED_VIDEO_FILE: &str = "fragmented_video_file"; // Video extra options
+
+// --- Event-Specific Fields ---
+pub const FIELD_STATS_DATA: &str = "stats_data";
+pub const FIELD_AUDIO_IN_DEVS: &str = "adio_in_devs"; // Using C++ typo for JSON key matching
+pub const FIELD_AUDIO_OUT_DEVS: &str = "adio_out_devs"; // Using C++ typo for JSON key matching
+pub const FIELD_VIDEO_ENCS: &str = "vid_encs";
+pub const FIELD_WINRT_CAPTURE_SUPPORTED: &str = "winrt_capture_supported";
+pub const FIELD_IS_WINDOW_CAPTURE: &str = "is_window_capture";
+pub const FIELD_SOURCE: &str = "source"; // Name of visible source in events
+pub const FIELD_DURATION: &str = "duration"; // Event duration
+pub const FIELD_SPLIT_FILE_DURATION: &str = "split_file_duration"; // Event split duration
+pub const FIELD_FRAME_PTS: &str = "frame_pts"; // Event frame PTS
+pub const FIELD_SPLIT_COUNT: &str = "count"; // Event split count
+pub const FIELD_NEXT_VIDEO_PATH: &str = "next_video_path"; // Event next video path
+pub const FIELD_VIDEO_START_TIME: &str = "video_start_time"; // Event video start time (epoch ms)
+pub const FIELD_REPLAY_DISCONNECTION: &str = "disconnection"; // Event replay disconnection flag
+pub const FIELD_LAST_ERROR: &str = "last_error"; // Event last error string
+pub const FIELD_MESSAGE: &str = "message"; // For warning events
+pub const FIELD_EXTRA_DATA: &str = "extra"; // For warning events
+
+// --- Stat Data fields (nested within FIELD_STATS_DATA) ---
+pub const FIELD_SYSTEM_INFO: &str = "system_info"; // Seems to be an opaque object in C++
+pub const FIELD_PERCENTAGE_LAGGED: &str = "percentage_lagged";
+pub const FIELD_DRAWN: &str = "drawn";
+pub const FIELD_LAGGED: &str = "lagged";
+pub const FIELD_DROPPED: &str = "dropped";
+pub const FIELD_TOTAL_FRAMES: &str = "total_frames";
+pub const FIELD_PERCENTAGE_DROPPED: &str = "percentage_dropped";
+
+// --- Known Video Encoders (as strings) ---
+pub const VIDEO_ENCODER_ID_X264: &str = "obs_x264";
+pub const VIDEO_ENCODER_ID_QUICKSYNC: &str = "obs_qsv11_v2";
+pub const VIDEO_ENCODER_ID_QUICKSYNC_HEVC: &str = "obs_qsv11_hevc";
+pub const VIDEO_ENCODER_ID_QUICKSYNC_AV1: &str = "obs_qsv11_av1";
+pub const VIDEO_ENCODER_ID_AMF: &str = "h264_texture_amf";
+pub const VIDEO_ENCODER_ID_AMF_AV1: &str = "av1_texture_amf";
+pub const VIDEO_ENCODER_ID_AMF_HEVC: &str = "h265_texture_amf";
+pub const VIDEO_ENCODER_ID_NVENC: &str = "ffmpeg_nvenc"; // Older?
+pub const VIDEO_ENCODER_ID_NVENC_NEW: &str = "jim_nvenc"; // Newer H.264
+pub const VIDEO_ENCODER_ID_NVENC_HEVC: &str = "jim_hevc_nvenc"; // Newer HEVC
+pub const VIDEO_ENCODER_ID_NVENC_AV1: &str = "jim_av1_nvenc"; // Newer AV1
