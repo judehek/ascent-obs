@@ -10,7 +10,9 @@ async fn main() {
 
 use ascent_obs_comm::{types::{AudioDeviceSettings, AudioSettings, ErrorEventPayload, FileOutputSettings, MonitorSourceSettings, RecorderType, RecordingStartedEventPayload, RecordingStoppedEventPayload, SceneSettings, StartCommandPayload, VideoEncoderSettings, VideoSettings}, ObsError, Recorder};
 
-const OW_OBS_PATH: &str = "C:/Users/judeb/Desktop/OBS_Organized_Build/bin/64bit/ascent-obs.exe";
+const OW_OBS_PATH: &str = "C:/path/to/file";
+const FILE_PATH: &str = "C:/path/to/file";
+const ENCODER_ID: &str = "jim_nvenc";
 
 async fn run_recorder() -> Result<(), ObsError> {
     println!("Starting recorder...");
@@ -86,10 +88,10 @@ async fn run_recorder() -> Result<(), ObsError> {
 
     // --- Example: Start a simple video recording ---
     let start_id = 101;
-    let video_settings = VideoSettings { video_encoder: VideoEncoderSettings { encoder_id: "jim_nvenc".to_string(), ..Default::default() }, game_cursor: Some(true), ..Default::default() };
+    let video_settings = VideoSettings { video_encoder: VideoEncoderSettings { encoder_id: ENCODER_ID.to_string(), ..Default::default() }, game_cursor: Some(true), ..Default::default() };
     let audio_settings = AudioSettings { sample_rate: Some(44100), ..Default::default() };
     let scene_settings = SceneSettings { monitor: Some(MonitorSourceSettings { enable: Some(true), ..Default::default()}), ..Default::default()}; // Capture primary monitor
-    let file_settings = FileOutputSettings { filename: Some("C:/Users/judeb/Desktop/OBS_Organized_Build/bin/64bit/test_recording.mp4".to_string()), ..Default::default() };
+    let file_settings = FileOutputSettings { filename: Some(FILE_PATH.to_string()), ..Default::default() };
 
     let start_payload = StartCommandPayload {
         recorder_type: RecorderType::Video,
