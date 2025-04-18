@@ -21,9 +21,9 @@
 #include "switches.h"
 #include <chrono>
 
-#define LOG_FOLDER_PATH "Overwolf/Log/"
-#define CRASHDUMP_FOLDER_PATH "Overwolf/Log/../CrashDumps/ascent-obs/"
-#define LOG_FILE_PREFIX "ow_obs_"
+#define LOG_FOLDER_PATH "Ascent/logs/recorder"
+#define CRASHDUMP_FOLDER_PATH "Ascent/logs/../crashes/ascent-obs/"
+#define LOG_FILE_PREFIX "ascent-obs-"
 #define MAX_LOGS_COUNT 10
 
 #define MAX_REPEATED_LINES 30
