@@ -115,7 +115,9 @@ struct hook_info {
 	bool UNUSED_use_scale;
 	bool force_shmem;
 	bool capture_overlay;
-	bool ready_to_capture; // ow
+	// ASCENT_EDIT_START: Carried over
+	bool ready_to_capture;
+	// ASCENT_EDIT_END: Carried over
 	bool allow_srgb_alias;
 	
 	/* hook addresses */

@@ -503,10 +503,11 @@ void obs_output_actual_stop(obs_output_t *output, bool force, uint64_t ts)
 		did_signal = true;
 	}
 
-	// ow : reset stopping event also if wasn't active
+	// ASCENT_EDIT_START: Reset stopping event also if wasn't active
 	if (!was_active && !did_signal) {
 		os_event_signal(output->stopping_event);
 	}
+	// ASCENT_EDIT_END: Reset stopping event also if wasn't active
 	while (output->caption_head) {
 		output->caption_tail = output->caption_head->next;
 		bfree(output->caption_head);

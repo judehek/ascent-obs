@@ -10,13 +10,13 @@ async fn main() {
 
 use ascent_obs_comm::{types::{AudioDeviceSettings, AudioSettings, ErrorEventPayload, FileOutputSettings, MonitorSourceSettings, RecorderType, RecordingStartedEventPayload, RecordingStoppedEventPayload, SceneSettings, StartCommandPayload, VideoEncoderSettings, VideoSettings}, ObsError, Recorder};
 
-const OW_OBS_PATH: &str = "C:/path/to/file";
+const ASCENT_OBS_PATH: &str = "C:/path/to/file";
 const FILE_PATH: &str = "C:/path/to/file";
 const ENCODER_ID: &str = "jim_nvenc";
 
 async fn run_recorder() -> Result<(), ObsError> {
     println!("Starting recorder...");
-    let (recorder, mut event_receiver) = Recorder::start(OW_OBS_PATH, 128).await?;
+    let (recorder, mut event_receiver) = Recorder::start(ASCENT_OBS_PATH, 128).await?;
     println!("Recorder started.");
 
     // Spawn a task to listen for events
