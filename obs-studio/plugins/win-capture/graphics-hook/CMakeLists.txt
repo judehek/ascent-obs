@@ -38,7 +38,7 @@ target_link_libraries(_graphics-hook INTERFACE OBS::d3d8-api OBS::hook-config OB
 target_link_options(_graphics-hook INTERFACE /IGNORE:4099)
 
 if(TARGET Vulkan::Vulkan)
-  target_sources(_graphics-hook INTERFACE vulkan-capture.c vulkan-capture.h ow_vulkan_data.h)
+  target_sources(_graphics-hook INTERFACE vulkan-capture.c vulkan-capture.h ascent_vulkan_data.h)
   target_link_libraries(_graphics-hook INTERFACE Vulkan::Vulkan)
   target_compile_definitions(_graphics-hook INTERFACE COMPILE_VULKAN_HOOK)
 endif()

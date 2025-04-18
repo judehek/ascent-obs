@@ -277,9 +277,9 @@ static void *ffmpeg_mux_create(obs_data_t *settings, obs_output_t *output)
 }
 
 #ifdef _WIN32
-#define FFMPEG_MUX "owobs-ffmpeg-mux.exe"
+#define FFMPEG_MUX "ascentobs-ffmpeg-mux.exe"
 #else
-#define FFMPEG_MUX "owobs-ffmpeg-mux"
+#define FFMPEG_MUX "ascentobs-ffmpeg-mux"
 #endif
 
 static inline bool capturing(struct ffmpeg_muxer *stream)

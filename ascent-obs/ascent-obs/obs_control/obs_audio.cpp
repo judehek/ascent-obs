@@ -23,8 +23,8 @@ const char kAudioCaptureSourceNew[] = "wasapi_process_output_capture";
 const int kOutputAudioChannelId = 1;
 const int kInputAudioChannelId = 3;
 
-const char* kDesktopDefaultAutioDeviceName = "owobs desktop device";
-const char* kMicAutioDeviceName = "owobs mic";
+const char* kDesktopDefaultAutioDeviceName = "ascentobs desktop device";
+const char* kMicAutioDeviceName = "ascentobs mic";
 
 const char* kAudioProccessPlugin = "audio_capture_process";
 const char* kAudioSampleRate = "sample_rate";

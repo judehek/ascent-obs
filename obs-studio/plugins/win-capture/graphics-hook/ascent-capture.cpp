@@ -53,13 +53,13 @@ static bool __cdecl ow_ogl_reset(HGLRC hrc)
 	return reset_ogl(hrc);
 }
 
-static bool __cdecl ow_vulkan_capture(void *queue, const void *info,
+static bool __cdecl ascent_vulkan_capture(void *queue, const void *info,
 					 void *source)
 {
 	return capture_vulkan(queue, info, source);
 }
 
-static bool __cdecl ow_vulkan_reset(void *device)
+static bool __cdecl ascent_vulkan_reset(void *device)
 {
 	return reset_vulkan(device);
 }
@@ -91,7 +91,7 @@ bool hook_ow(void)
 		&ow_ogl_capture, &ow_ogl_reset);
 
 	static_cast<callback_type2>(get_proc("set_vulkan_capture_callbacks"))(
-		&ow_vulkan_capture, &ow_vulkan_reset);
+		&ascent_vulkan_capture, &ascent_vulkan_reset);
 
 	return true;
 }
