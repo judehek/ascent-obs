@@ -12,7 +12,7 @@
 
 #define DEBUG_OUTPUT
 #define OBS_CAPTURE
-#define OW_CAPTURE
+#define ASCENT_CAPTURE 0
 
 #ifdef DEBUG_OUTPUT
 #define DbgOut(x) OutputDebugStringA(x)
@@ -332,7 +332,7 @@ static inline bool dxgi_hookable(void)
 
 static inline bool attempt_hook(void)
 {
-#ifdef OW_CAPTURE
+#if ASCENT_CAPTURE
 	if (hook_ow()) {
 		stop_loop = true;
 		return true;
@@ -436,12 +436,12 @@ static inline bool attempt_hook(void)
 #endif
 
 	return false;
-#endif // OW_CAPTURE
+#endif // ASCENT_CAPTURE
 }
 
 static inline void capture_loop(void)
 {
-	//MessageBox(NULL, L"main_capture_thread", L"ow_obs_graphics-hook", 0);
+	//MessageBox(NULL, L"main_capture_thread", L"ascent_obs_graphics-hook", 0);
 	WaitForSingleObject(signal_init, INFINITE);
 
 	while (!attempt_hook())
@@ -458,7 +458,7 @@ static inline void capture_loop(void)
 
 static DWORD WINAPI main_capture_thread(HANDLE thread_handle)
 {
-	//MessageBox(NULL, L"main_capture_thread", "ow_obs_graphics-hook", 0);
+	//MessageBox(NULL, L"main_capture_thread", "ascent_obs_graphics-hook", 0);
 	if (!init_hook(thread_handle)) {
 		DbgOut("[OBS] Failed to init hook\n");
 		free_hook();
@@ -883,7 +883,7 @@ void capture_free(void)
 	active = false;
 }
 
-#define HOOK_NAME L"ow_graphics_hook_dup_mutex"
+#define HOOK_NAME L"ascent_graphics_hook_dup_mutex"
 
 static inline HANDLE open_mutex_plus_id(const wchar_t *name, DWORD id)
 {

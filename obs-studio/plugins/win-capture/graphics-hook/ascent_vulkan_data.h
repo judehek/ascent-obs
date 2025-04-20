@@ -6,7 +6,7 @@
 
 #define DEF_FUNC(x) PFN_vk##x x
 
-struct ow_vk_inst_funcs {
+struct ascent_vk_inst_funcs {
 	DEF_FUNC(GetInstanceProcAddr);
 	DEF_FUNC(DestroyInstance);
 	DEF_FUNC(CreateWin32SurfaceKHR);
@@ -17,7 +17,7 @@ struct ow_vk_inst_funcs {
 	DEF_FUNC(GetPhysicalDeviceFormatProperties);
 };
 
-struct ow_vk_device_funcs {
+struct ascent_vk_device_funcs {
 	DEF_FUNC(GetDeviceProcAddr);
 	DEF_FUNC(DestroyDevice);
 	DEF_FUNC(CreateSwapchainKHR);
@@ -96,16 +96,16 @@ struct ow_vk_device_funcs {
 };
 #undef DEF_FUNC
 
-struct ow_vk_device_data {
-	struct ow_vk_device_funcs funcs;
+struct ascent_vk_device_data {
+	struct ascent_vk_device_funcs funcs;
 	PFN_vkSetDeviceLoaderData set_device_loader_data;
 	VkPhysicalDevice phy_device;
 	VkDevice device;
 	VkExternalMemoryProperties external_mem_props;
-	struct ow_vk_queue_data *graphic_queue;
+	struct ascent_vk_queue_data *graphic_queue;
 };
 
-struct ow_vk_queue_data {
+struct ascent_vk_queue_data {
 	VkQueue queue;
 	VkDevice device;
 	uint32_t family_index;
@@ -113,7 +113,7 @@ struct ow_vk_queue_data {
 	uint64_t timestamp_mask;
 };
 
-struct ow_vk_native_swapchain_data {
+struct ascent_vk_native_swapchain_data {
 	VkSwapchainKHR swapchain;
 	VkSurfaceKHR surface;
 	VkFormat format;

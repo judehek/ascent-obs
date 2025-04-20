@@ -29,11 +29,11 @@ impl Recorder {
     /// * `ow_obs_path` - Path to the ascent-obs.exe executable.
     /// * `buffer_size` - Size of the internal channel buffer for incoming events.
     pub async fn start(
-        ow_obs_path: impl AsRef<Path>,
+        ascent_obs_path: impl AsRef<Path>,
         buffer_size: usize,
     ) -> Result<(Self, EventReceiver), ObsError> {
         // For stdio communication, channel_id is typically None.
-        let (client, event_receiver) = ObsClient::start(ow_obs_path, None, buffer_size).await?;
+        let (client, event_receiver) = ObsClient::start(ascent_obs_path, None, buffer_size).await?;
         Ok((
             Self {
                 client,

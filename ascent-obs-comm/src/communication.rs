@@ -24,19 +24,19 @@ pub struct ObsClient {
 impl ObsClient {
     /// Starts the ascent-obs.exe process and establishes communication channels.
     pub async fn start(
-        ow_obs_path: impl AsRef<Path>,
+        ascent_obs_path: impl AsRef<Path>,
         channel_id: Option<&str>,
         buffer_size: usize,
     ) -> Result<(Self, mpsc::Receiver<Result<EventNotification, ObsError>>), ObsError>
     {
-        let ow_obs_path_str = ow_obs_path
+        let ascent_obs_path_str = ascent_obs_path
             .as_ref()
             .to_str()
             .ok_or(ObsError::InvalidPath)?;
 
-        info!("Starting ascent-obs process: {}", ow_obs_path_str);
+        info!("Starting ascent-obs process: {}", ascent_obs_path_str);
 
-        let mut command = TokioCommand::new(ow_obs_path_str);
+        let mut command = TokioCommand::new(ascent_obs_path_str);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
