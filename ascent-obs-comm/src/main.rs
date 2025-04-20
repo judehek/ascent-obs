@@ -1,13 +1,5 @@
 use ascent_obs_comm::{
-    errors::ObsError, // Import errors directly
-    recorder::{EventReceiver, Recorder}, // Import Recorder and EventReceiver
-    types::{
-        // Import only event types needed for handling
-        ErrorEventPayload, EventNotification, QueryMachineInfoEventPayload,
-        RecordingStartedEventPayload, RecordingStoppedEventPayload,
-        // Event codes
-        EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_READY, EVT_RECORDING_STARTED, EVT_RECORDING_STOPPED,
-    },
+    errors::ObsError, Recorder, RecordingConfig // Import errors directly
 };
 use log::debug;
 use std::io::{self, Write};
@@ -33,39 +25,47 @@ const TARGET_PID: i32 = 23404; // !! Make sure this PID is correct when you run!
 async fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
 
-    // --- Use RecorderBuilder to start the process ---
-    let (recorder, mut event_receiver) = Recorder::builder(ASCENT_OBS_PATH)
-        // .event_buffer_size(256) // Optional: Set buffer size
-        .build()
-        .await?;
+    // --- Create the recorder directly with new() ---
+    let recorder = Recorder::new(ASCENT_OBS_PATH, None).await?;
 
     println!("Recorder process started.");
-
-    // --- Spawn Event Listener Task (largely unchanged) ---
-    let event_handle = tokio::spawn(async move {
-        println!("Event listener task started.");
-        while let Some(event_result) = event_receiver.recv().await {
-            match event_result {
-                Ok(notification) => {
-                    handle_event(notification); // Delegate to separate function
-                }
-                Err(e) => {
-                    eprintln!("Error receiving event from channel: {}", e);
-                    break; // Stop listening on channel error
-                }
-            }
-        }
-        println!("Event listener task finished.");
-    });
+    
+    // Note: We no longer have an event receiver, so we'll skip event handling
 
     // --- Example: Query Machine Info ---
-    let query_id = recorder.query_machine_info().await?;
-    println!("\nSent Query Machine Info command (id: {})", query_id);
-    // You would look for EVT_QUERY_MACHINE_INFO with this ID in the event handler
+    // Note: Our new API just returns an ID but we can't actually listen for the response
+    match ascent_obs_comm::query_machine_info(ASCENT_OBS_PATH).await {
+        Ok(machine_info) => {
+            println!("\nQuery Machine Info completed successfully!");
+            println!("Found {} video encoders and {} audio devices:", 
+                machine_info.video_encoders.len(),
+                machine_info.audio_input_devices.len() + machine_info.audio_output_devices.len());
+            
+            // Print some details about the encoders
+            if !machine_info.video_encoders.is_empty() {
+                println!("\nAvailable video encoders:");
+                for encoder in &machine_info.video_encoders {
+                    println!("  - {}: {} (Valid: {})", 
+                        encoder.encoder_type, 
+                        encoder.description, 
+                        encoder.valid);
+                }
+            }
+            
+            // Optionally print audio devices if you want
+            // if !machine_info.audio_input_devices.is_empty() {
+            //     println!("\nInput audio devices:");
+            //     for device in &machine_info.audio_input_devices {
+            //         println!("  - {}", device.name);
+            //     }
+            // }
+        },
+        Err(e) => {
+            println!("\nFailed to query machine info: {}", e);
+        }
+    }
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await; // Give time for query response
-
-    // --- Start Recording using the Builder ---
+    // --- Start Recording using RecordingConfig ---
     println!(
         "\n>>> You have 5 seconds to Alt+Tab to League of Legends (PID: {}) <<<",
         TARGET_PID
@@ -81,19 +81,17 @@ async fn run_recorder() -> Result<(), ObsError> {
     }
     println!("\rSending start recording command...          "); // Clear countdown line
 
-    let recording_id = recorder
-        .start_video_recording() // Get the builder
-        .output_file(FILE_PATH) // Set required path
-        .capture_game(TARGET_PID) // Set required PID
+    // Create a RecordingConfig and start recording
+    let config = RecordingConfig::new(FILE_PATH, TARGET_PID)
         // Optional settings:
-        // .video_encoder("jim_nvenc") // Default is jim_nvenc anyway
-        // .fps(60)                     // Default is 60
-        // .resolution(1920, 1080)      // Default is 1920x1080
-        // .show_game_cursor(true)      // Default is true
-        // .audio_sample_rate(48000)    // Default is 48000
-        .start() // Build payload and send command
-        .await?; // Await the send operation
-
+        // .with_encoder("jim_nvenc")       // Default is jim_nvenc anyway
+        // .with_fps(60)                    // Default is 60
+        // .with_resolution(1920, 1080)     // Default is 1920x1080
+        // .with_cursor(true)               // Default is true
+        // .with_sample_rate(48000)         // Default is 48000
+        ;
+    
+    let recording_id = recorder.start_recording(config).await?;
     println!("Start recording command sent (id: {})", recording_id);
 
     // Let it run
@@ -102,10 +100,11 @@ async fn run_recorder() -> Result<(), ObsError> {
 
     // --- Stop the recording ---
     println!("Sending Stop command (id: {})...", recording_id);
-    recorder.stop_recording(recording_id).await?; // Use the specific stop method
+    recorder.stop_recording().await?;
     println!("Stop command sent (id: {})", recording_id);
 
-    // Allow time for stop event processing
+    // Allow time for stop event processing 
+    // (though we aren't receiving events in this version)
     tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
 
     // --- Shutdown ---
@@ -113,106 +112,7 @@ async fn run_recorder() -> Result<(), ObsError> {
     recorder.shutdown().await?; // Consume the recorder instance
     println!("Recorder shutdown message sent.");
 
-    // Wait for the event listener task to potentially finish
-    println!("Waiting a few seconds for event listener cleanup...");
-    // Wait slightly longer to ensure shutdown messages might have been processed
-    let _ = tokio::time::timeout(tokio::time::Duration::from_secs(5), event_handle).await;
-    // Handle timeout or join error if needed
-
+    // No need to wait for event listener since we're not handling events
     println!("Rust script finished.");
     Ok(())
-}
-
-// --- Event Handling Function ---
-fn handle_event(notification: EventNotification) {
-    let event_code = notification.event;
-    let id_str = notification
-        .identifier
-        .map(|id| id.to_string())
-        .unwrap_or_else(|| "None".to_string());
-
-    debug!(
-        "Received Event -> Code: {}, ID: {}, Raw Payload: {:?}",
-        event_code,
-        id_str,
-        notification.payload // Log raw payload only at debug level
-    );
-
-    match event_code {
-        EVT_READY => {
-            println!("---> Event: READY (ID: {}) <---", id_str);
-        }
-        EVT_RECORDING_STARTED => {
-            println!(
-                "---> Event: RECORDING_STARTED (ID: {}) <---",
-                id_str
-            );
-            match notification.deserialize_payload::<RecordingStartedEventPayload>() {
-                Ok(Some(payload)) => {
-                    println!("     Source: {}, Window Capture: {:?}", payload.source, payload.is_window_capture)
-                }
-                Ok(None) => println!("     (No payload data)"),
-                Err(e) => eprintln!("     Error parsing RECORDING_STARTED payload: {}", e),
-            }
-        }
-        EVT_RECORDING_STOPPED => {
-            println!(
-                "---> Event: RECORDING_STOPPED (ID: {}) <---",
-                id_str
-            );
-            match notification.deserialize_payload::<RecordingStoppedEventPayload>() {
-                Ok(Some(payload)) => println!(
-                    "     Code: {}, Duration: {}ms, Error: {:?}, Res: {:?}x{:?}, Stats: {:?}",
-                    payload.code,
-                    payload.duration,
-                    payload.last_error,
-                    payload.output_width,
-                    payload.output_height,
-                    payload.stats_data.is_some() // Just indicate if stats exist
-                ),
-                Ok(None) => println!("     (No payload data)"),
-                Err(e) => eprintln!("     Error parsing RECORDING_STOPPED payload: {}", e),
-            }
-        }
-        EVT_QUERY_MACHINE_INFO => {
-             println!(
-                "---> Event: QUERY_MACHINE_INFO (ID: {}) <---",
-                id_str
-            );
-             match notification.deserialize_payload::<QueryMachineInfoEventPayload>() {
-                Ok(Some(payload)) => {
-                    println!("     Audio In: {} devices", payload.audio_input_devices.len());
-                    println!("     Audio Out: {} devices", payload.audio_output_devices.len());
-                    println!("     Video Encoders:");
-                    for enc in payload.video_encoders {
-                         println!("       - ID: {}, Desc: {}, Valid: {}", enc.encoder_type, enc.description, enc.valid);
-                    }
-                     println!("     WinRT Capture Supported: {}", payload.winrt_capture_supported);
-                }
-                Ok(None) => println!("     (No payload data)"),
-                Err(e) => eprintln!("     Error parsing QUERY_MACHINE_INFO payload: {}", e),
-             }
-        }
-        EVT_ERR => {
-            eprintln!("!!! ---> Event: ERROR (ID: {}) <--- !!!", id_str);
-            match notification.deserialize_payload::<ErrorEventPayload>() {
-                Ok(Some(payload)) => {
-                    eprintln!("     Code: {}, Desc: {:?}", payload.code, payload.desc);
-                    if let Some(data) = payload.data {
-                         eprintln!("     Data: {}", data);
-                    }
-                }
-                Ok(None) => eprintln!("     (No error payload data)"),
-                Err(e) => eprintln!("     Error parsing ERR payload: {}", e),
-            }
-        }
-        // Add cases for other events if needed (e.g., EVT_RECORDING_STOPPING)
-        _ => {
-             println!("---> Event: UNHANDLED (Code: {}, ID: {}) <---", event_code, id_str);
-             // Optionally log the payload for debugging unhandled events
-             // if let Some(payload_value) = notification.payload {
-             //     println!("     Payload: {}", payload_value);
-             // }
-        }
-    }
 }

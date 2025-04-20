@@ -34,5 +34,10 @@ pub enum ObsError {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    // Add other specific error types as needed
+    
+    #[error("A recording session is already active")]
+    AlreadyRecording,
+
+    #[error("No recording session is currently active")]
+    NotRecording,
 }

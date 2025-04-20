@@ -1,5 +1,5 @@
 use crate::types::{CommandRequest, SimpleCommandRequest, EventNotification}; // Assuming EventNotification is in types
-use crate::errors::ObsError; // Assuming ObsError is in errors
+use crate::errors::ObsError;
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Deserializer;
