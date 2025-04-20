@@ -1,83 +1,299 @@
-// src/recorder.rs
 use crate::communication::ObsClient;
 use crate::errors::ObsError;
-use crate::types::{AudioSettings, BrbSourceSettings, EventNotification, GameFocusChangedCommandPayload, GameSourceSettings, RecorderType, SetVolumeCommandPayload, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, TobiiSourceSettings, CMD_ADD_GAME_SOURCE, CMD_GAME_FOCUS_CHANGED, CMD_QUERY_MACHINE_INFO, CMD_SET_BRB, CMD_SET_VOLUME, CMD_SHUTDOWN, CMD_SPLIT_VIDEO, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, CMD_TOBII_GAZE};
+use crate::types::{
+    // Keep necessary types for internal use and builder
+    AudioDeviceSettings, AudioSettings, EventNotification, FileOutputSettings,
+    GameSourceSettings, RecorderType, SceneSettings, StartCommandPayload, StopCommandPayload,
+    VideoEncoderSettings, VideoSettings,
+    // Command codes needed internally
+    CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_STOP,
+    // For default encoder settings
+    VIDEO_ENCODER_ID_NVENC_NEW,
+};
 use log::{debug, error, info};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI32, Ordering};
 use tokio::sync::mpsc;
 
-// Counter for generating simple identifiers when needed (e.g., for queries)
+// Counter for generating simple identifiers when needed
 static NEXT_IDENTIFIER: AtomicI32 = AtomicI32::new(1);
 
-/// A high-level client for controlling an ascent-obs recording process.
-#[derive(Debug)]
-pub struct Recorder {
-    client: ObsClient,
-    // We don't store the receiver here; it's returned by start()
-    // Add internal state tracking if needed later (e.g., is_recording)
+/// Generates a unique identifier for commands/requests.
+fn generate_identifier() -> i32 {
+    NEXT_IDENTIFIER.fetch_add(1, Ordering::Relaxed)
 }
 
-// Type alias for the event receiver channel returned by start()
+// Type alias for the event receiver channel
 pub type EventReceiver = mpsc::Receiver<Result<EventNotification, ObsError>>;
 
-impl Recorder {
-    /// Starts the ascent-obs.exe process and returns a `Recorder` instance
-    /// along with a channel receiver for events.
+// --- RecorderBuilder ---
+
+/// Builder for configuring and starting the ascent-obs process.
+#[derive(Debug, Clone)]
+pub struct RecorderBuilder {
+    ascent_obs_path: PathBuf,
+    buffer_size: usize,
+    // Add other OBS process-level config here if needed later
+}
+
+impl RecorderBuilder {
+    /// Creates a new builder for the recorder.
     ///
     /// # Arguments
-    /// * `ow_obs_path` - Path to the ascent-obs.exe executable.
-    /// * `buffer_size` - Size of the internal channel buffer for incoming events.
-    pub async fn start(
-        ascent_obs_path: impl AsRef<Path>,
-        buffer_size: usize,
-    ) -> Result<(Self, EventReceiver), ObsError> {
+    /// * `ascent_obs_path` - Path to the ascent-obs.exe executable.
+    pub fn new(ascent_obs_path: impl Into<PathBuf>) -> Self {
+        Self {
+            ascent_obs_path: ascent_obs_path.into(),
+            buffer_size: 128, // Default buffer size
+        }
+    }
+
+    /// Sets the size of the internal channel buffer for incoming events.
+    /// Defaults to 128.
+    pub fn event_buffer_size(mut self, size: usize) -> Self {
+        self.buffer_size = size;
+        self
+    }
+
+    /// Starts the ascent-obs.exe process and returns a `Recorder` instance
+    /// along with a channel receiver for events.
+    pub async fn build(self) -> Result<(Recorder, EventReceiver), ObsError> {
+        info!("Starting ascent-obs process from: {:?}", self.ascent_obs_path);
         // For stdio communication, channel_id is typically None.
-        let (client, event_receiver) = ObsClient::start(ascent_obs_path, None, buffer_size).await?;
+        let (client, event_receiver) =
+            ObsClient::start(self.ascent_obs_path, None, self.buffer_size).await?;
+
         Ok((
-            Self {
+            Recorder {
                 client,
-                // Initialize any internal state here if added later
+                // Internal state for tracking started recordings could go here if needed
             },
             event_receiver,
         ))
     }
+}
 
-    /// Sends a command to start recording, streaming, or replay buffering.
-    ///
-    /// # Arguments
-    /// * `identifier` - A unique identifier for this start request. The corresponding
-    ///   `READY`, `STARTED`, or `ERR` event will include this identifier.
-    /// * `settings` - The complete settings structure for the start command.
-    pub async fn start_capture(
-        &self,
-        identifier: i32,
-        settings: StartCommandPayload,
-    ) -> Result<(), ObsError> {
-        info!(
-            "Sending START command (id: {}, type: {:?})",
-            identifier, settings.recorder_type
-        );
-        self.client
-            .send_command(CMD_START, Some(identifier), settings)
-            .await
+// --- StartRecordingBuilder ---
+
+/// Builder for configuring and starting a specific video recording session.
+#[derive(Debug)]
+pub struct StartRecordingBuilder<'a> {
+    recorder: &'a Recorder,
+    output_file: Option<PathBuf>,
+    game_pid: Option<i32>,
+    encoder_id: Option<String>,
+    fps: Option<u32>,
+    resolution: Option<(u32, u32)>,
+    show_cursor: Option<bool>,
+    sample_rate: Option<u32>,
+    // Add more configuration methods as needed
+}
+
+impl<'a> StartRecordingBuilder<'a> {
+    /// Creates a new builder associated with a Recorder instance.
+    /// (Internal constructor, accessed via `recorder.start_video_recording()`)
+    fn new(recorder: &'a Recorder) -> Self {
+        Self {
+            recorder,
+            output_file: None,
+            game_pid: None,
+            encoder_id: None,
+            fps: None,
+            resolution: None,
+            show_cursor: None,
+            sample_rate: None,
+        }
     }
 
-    /// Sends a command to stop a specific recording, stream, or replay buffer.
+    /// Sets the output file path for the recording (Required).
+    pub fn output_file(mut self, path: impl Into<PathBuf>) -> Self {
+        self.output_file = Some(path.into());
+        self
+    }
+
+    /// Sets the process ID of the game to capture (Required).
+    pub fn capture_game(mut self, pid: i32) -> Self {
+        self.game_pid = Some(pid);
+        self
+    }
+
+    /// Sets the video encoder ID (e.g., "jim_nvenc").
+    /// Defaults to "jim_nvenc" if not set.
+    pub fn video_encoder(mut self, id: impl Into<String>) -> Self {
+        self.encoder_id = Some(id.into());
+        self
+    }
+
+    /// Sets the recording frame rate (FPS). Defaults to 60.
+    pub fn fps(mut self, fps: u32) -> Self {
+        self.fps = Some(fps);
+        self
+    }
+
+    /// Sets the recording output resolution. Defaults to 1920x1080.
+    pub fn resolution(mut self, width: u32, height: u32) -> Self {
+        self.resolution = Some((width, height));
+        self
+    }
+
+    /// Sets whether to capture the game cursor. Defaults to true.
+    pub fn show_game_cursor(mut self, show: bool) -> Self {
+        self.show_cursor = Some(show);
+        self
+    }
+
+    /// Sets the audio sample rate. Defaults to 48000.
+    pub fn audio_sample_rate(mut self, rate: u32) -> Self {
+        self.sample_rate = Some(rate);
+        self
+    }
+
+    /// Validates settings, constructs the StartCommandPayload, sends the command,
+    /// and returns the unique identifier for this recording session.
+    pub async fn start(self) -> Result<i32, ObsError> {
+        let output_file = self
+            .output_file
+            .ok_or_else(|| ObsError::Configuration("Output file path is required".to_string()))?;
+        let game_pid = self
+            .game_pid
+            .ok_or_else(|| ObsError::Configuration("Game process ID is required".to_string()))?;
+
+        let identifier = generate_identifier();
+        let (output_width, output_height) = self.resolution.unwrap_or((1920, 1080));
+        let fps = self.fps.unwrap_or(60);
+        let encoder_id = self
+            .encoder_id
+            .unwrap_or_else(|| VIDEO_ENCODER_ID_NVENC_NEW.to_string()); // Default Encoder
+        let game_cursor = self.show_cursor.unwrap_or(true);
+        let sample_rate = self.sample_rate.unwrap_or(48000);
+
+        let video_settings = VideoSettings {
+            video_encoder: VideoEncoderSettings {
+                encoder_id,
+                ..Default::default() // Keep default encoder settings for now
+            },
+            game_cursor: Some(game_cursor),
+            fps: Some(fps),
+            base_width: Some(output_width), // Base = Output for simplicity here
+            base_height: Some(output_height),
+            output_width: Some(output_width),
+            output_height: Some(output_height),
+            ..Default::default()
+        };
+
+        let audio_settings = AudioSettings {
+            sample_rate: Some(sample_rate),
+            // Use default audio devices unless more specific config is added
+            output_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
+            input_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
+            ..Default::default()
+        };
+
+        let scene_settings = SceneSettings {
+            game: Some(GameSourceSettings {
+                process_id: Some(game_pid),
+                foreground: Some(true), // Assume foreground for basic recording
+                allow_transparency: Some(false),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let file_settings = FileOutputSettings {
+            filename: Some(output_file.to_string_lossy().into_owned()),
+            ..Default::default()
+        };
+
+        let start_payload = StartCommandPayload {
+            recorder_type: RecorderType::Video,
+            video_settings: Some(video_settings),
+            audio_settings: Some(audio_settings),
+            file_output: Some(file_settings),
+            scene_settings: Some(scene_settings),
+            ..Default::default()
+        };
+
+        info!(
+            "Sending START command (id: {}, type: {:?}, path: {:?}, pid: {})",
+            identifier,
+            start_payload.recorder_type,
+            output_file,
+            game_pid
+        );
+
+        self.recorder
+            .client
+            .send_command(CMD_START, Some(identifier), start_payload)
+            .await?;
+
+        Ok(identifier)
+    }
+}
+
+// --- Recorder ---
+
+/// A high-level client for controlling an ascent-obs recording process,
+/// focusing on simplified video recording operations.
+#[derive(Debug)]
+pub struct Recorder {
+    client: ObsClient,
+    // Add internal state tracking if needed later (e.g., map of active recording IDs)
+}
+
+impl Recorder {
+    /// Creates a builder to configure and start the ascent-obs process.
+    /// Use `RecorderBuilder::new(path).build().await` to get a Recorder instance.
+    pub fn builder(ascent_obs_path: impl Into<PathBuf>) -> RecorderBuilder {
+        RecorderBuilder::new(ascent_obs_path)
+    }
+
+    // Private start method used by the builder
+    // async fn start(
+    //     ascent_obs_path: impl AsRef<Path>,
+    //     buffer_size: usize,
+    // ) -> Result<(Self, EventReceiver), ObsError> {
+    //     info!("Starting ascent-obs process from: {:?}", ascent_obs_path.as_ref());
+    //     let (client, event_receiver) = ObsClient::start(ascent_obs_path, None, buffer_size).await?;
+    //     Ok((
+    //         Self {
+    //             client,
+    //         },
+    //         event_receiver,
+    //     ))
+    // }
+
+    /// Creates a builder to configure and initiate a video recording.
+    ///
+    /// Call `.start().await` on the returned builder to begin recording.
+    /// The `start()` method returns a unique identifier for this recording session.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let recording_id = recorder.start_video_recording()
+    ///     .output_file("my_recording.mp4")
+    ///     .capture_game(12345) // PID
+    ///     .fps(60)
+    ///     .start()
+    ///     .await?;
+    /// ```
+    pub fn start_video_recording(&self) -> StartRecordingBuilder<'_> {
+        StartRecordingBuilder::new(self)
+    }
+
+    /// Sends a command to stop a specific recording.
     ///
     /// # Arguments
-    /// * `identifier` - The identifier originally used to start the capture.
-    /// * `recorder_type` - The type of capture to stop.
-    pub async fn stop_capture(
-        &self,
-        identifier: i32,
-        recorder_type: RecorderType,
-    ) -> Result<(), ObsError> {
+    /// * `identifier` - The identifier returned when the recording was started.
+    pub async fn stop_recording(&self, identifier: i32) -> Result<(), ObsError> {
         info!(
             "Sending STOP command (id: {}, type: {:?})",
-            identifier, recorder_type
+            identifier,
+            RecorderType::Video
         );
-        let payload = StopCommandPayload { recorder_type };
+        let payload = StopCommandPayload {
+            recorder_type: RecorderType::Video,
+        };
+        // Use internal client method
         self.client
             .send_command(CMD_STOP, Some(identifier), payload)
             .await
@@ -87,135 +303,12 @@ impl Recorder {
     /// Returns the identifier sent with the command, which can be used to
     /// match the corresponding `EVT_QUERY_MACHINE_INFO` event.
     pub async fn query_machine_info(&self) -> Result<i32, ObsError> {
-        // Generate a simple unique ID for this query
-        let identifier = NEXT_IDENTIFIER.fetch_add(1, Ordering::Relaxed);
+        let identifier = generate_identifier();
         info!("Sending QUERY_MACHINE_INFO command (id: {})", identifier);
         self.client
             .send_simple_command(CMD_QUERY_MACHINE_INFO, Some(identifier))
             .await?;
         Ok(identifier)
-    }
-
-    /// Sends a command to set audio volumes.
-    ///
-    /// # Arguments
-    /// * `audio_settings` - Contains the desired volume levels for input/output.
-    ///   Only the `volume` fields within the nested `AudioDeviceSettings` are typically used.
-    pub async fn set_volume(&self, audio_settings: AudioSettings) -> Result<(), ObsError> {
-        info!("Sending SET_VOLUME command");
-        // The C++ command expects the volumes nested within an 'audio_settings' object
-        let payload = SetVolumeCommandPayload {
-            audio_settings: Some(audio_settings),
-        };
-        // SetVolume doesn't typically need an identifier
-        self.client.send_command(CMD_SET_VOLUME, None, payload).await
-    }
-
-    /// Informs ascent-obs about a change in game focus.
-    ///
-    /// # Arguments
-    /// * `game_foreground` - True if the game window is now in the foreground.
-    /// * `is_minimized` - Optional: True if the game window is minimized.
-    pub async fn game_focus_changed(
-        &self,
-        game_foreground: bool,
-        is_minimized: Option<bool>,
-    ) -> Result<(), ObsError> {
-        info!(
-            "Sending GAME_FOCUS_CHANGED command (foreground: {})",
-            game_foreground
-        );
-        let payload = GameFocusChangedCommandPayload {
-            game_foreground,
-            is_minimized,
-        };
-        // GameFocusChanged doesn't typically need an identifier
-        self.client
-            .send_command(CMD_GAME_FOCUS_CHANGED, None, payload)
-            .await
-    }
-
-    /// Adds or updates the primary game capture source settings.
-    ///
-    /// # Arguments
-    /// * `settings` - The configuration for the game source (e.g., process ID).
-    pub async fn add_game_source(&self, settings: GameSourceSettings) -> Result<(), ObsError> {
-        info!(
-            "Sending ADD_GAME_SOURCE command (pid: {:?})",
-            settings.process_id
-        );
-        // AddGameSource doesn't typically need an identifier for the command itself
-        // The payload *is* the settings struct
-        self.client
-            .send_command(CMD_ADD_GAME_SOURCE, None, settings)
-            .await
-    }
-
-    /// Starts capturing a replay from the active replay buffer.
-    ///
-    /// # Arguments
-    /// * `identifier` - The identifier originally used to start the replay *buffer*.
-    /// * `payload` - Contains details like the output path and desired duration from the buffer head.
-    pub async fn start_replay_capture(
-        &self,
-        identifier: i32, // Identifier of the replay *buffer*
-        payload: StartReplayCaptureCommandPayload,
-    ) -> Result<(), ObsError> {
-        info!(
-            "Sending START_REPLAY_CAPTURE command (id: {}, path: {})",
-            identifier, payload.path
-        );
-        // This command uses the *replay buffer's* identifier
-        self.client
-            .send_command(CMD_START_REPLAY_CAPTURE, Some(identifier), payload)
-            .await
-    }
-
-    /// Stops an ongoing replay *capture* (saving process).
-    ///
-    /// # Arguments
-    /// * `identifier` - The identifier originally used to start the replay *buffer*.
-    pub async fn stop_replay_capture(&self, identifier: i32) -> Result<(), ObsError> {
-        info!("Sending STOP_REPLAY_CAPTURE command (id: {})", identifier);
-        // This command uses the *replay buffer's* identifier
-        self.client
-            .send_simple_command(CMD_STOP_REPLAY_CAPTURE, Some(identifier))
-            .await
-    }
-
-    /// Updates the Tobii gaze overlay source settings (e.g., visibility).
-    ///
-    /// # Arguments
-    /// * `settings` - The new settings for the Tobii source.
-    pub async fn update_tobii_gaze(&self, settings: TobiiSourceSettings) -> Result<(), ObsError> {
-        info!("Sending TOBII_GAZE command (visible: {:?})", settings.visible);
-        // UpdateTobiiGaze doesn't typically need an identifier
-        self.client
-            .send_command(CMD_TOBII_GAZE, None, settings)
-            .await
-    }
-
-    /// Updates the "Be Right Back" (BRB) source settings.
-    ///
-    /// # Arguments
-    /// * `settings` - The new settings for the BRB source (path, color).
-    pub async fn set_brb(&self, settings: BrbSourceSettings) -> Result<(), ObsError> {
-        info!("Sending SET_BRB command (path: {:?})", settings.path);
-        // SetBrb doesn't typically need an identifier
-        self.client.send_command(CMD_SET_BRB, None, settings).await
-    }
-
-    /// Manually triggers a video split for an active recording.
-    /// The recording must have been started with `enable_on_demand_split_video: true`.
-    ///
-    /// # Arguments
-    /// * `identifier` - The identifier originally used to start the recording.
-    pub async fn split_video(&self, identifier: i32) -> Result<(), ObsError> {
-        info!("Sending SPLIT_VIDEO command (id: {})", identifier);
-        // SplitVideo uses the recording's identifier
-        self.client
-            .send_simple_command(CMD_SPLIT_VIDEO, Some(identifier))
-            .await
     }
 
     /// Sends the shutdown command to ascent-obs and waits for the process and tasks to terminate.
@@ -231,8 +324,4 @@ impl Recorder {
         // Now call the client's shutdown which handles process termination etc.
         self.client.shutdown().await
     }
-
-    // Potential future additions:
-    // - Methods to get internal state (e.g., is_recording(identifier))
-    // - Methods to simplify common setting configurations
 }

@@ -26,6 +26,9 @@ pub enum ObsError {
     #[error("OwObs process exited unexpectedly with status: {0:?}")]
     ProcessExited(Option<std::process::ExitStatus>),
 
+    #[error("Invalid configuration provided: {0}")] // Added for Builder
+    Configuration(String),
+
     #[error("Client is not running or already shut down")]
     NotRunning,
 

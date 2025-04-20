@@ -1,10 +1,11 @@
 use crate::types::{CommandRequest, SimpleCommandRequest, EventNotification}; // Assuming EventNotification is in types
 use crate::errors::ObsError; // Assuming ObsError is in errors
-use log::{debug, error, info, warn};
-use serde::Serialize;
+use log::{debug, error, info, trace, warn};
+use serde::{Deserialize, Serialize};
+use serde_json::Deserializer;
 use std::path::Path;
 use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command as TokioCommand};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
@@ -217,124 +218,136 @@ fn spawn_writer_task(
     })
 }
 
-/// Task to read lines from process stdout, parse JSON events, and send them via mpsc channel.
+/// Task to read bytes from stdout, manage a buffer, parse JSON stream using iterator, and send events.
 fn spawn_reader_task(
     stdout: ChildStdout,
     event_sender: mpsc::Sender<Result<EventNotification, ObsError>>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut reader = BufReader::new(stdout);
-        let mut buffer = Vec::new(); // Use a byte buffer for reading
+        let mut read_buf = vec![0u8; 4096]; // Buffer for reading directly from stdout
+        let mut process_buf = Vec::with_capacity(8192); // Buffer to accumulate data for parsing
 
         loop {
-            buffer.clear();
-            // Read *some* data, not necessarily a full line
-            match reader.read_until(b'}', &mut buffer).await {
-                // Attempt to read until a '}' which likely terminates a JSON object.
-                // This isn't foolproof if '}' appears inside strings, but better than read_line.
-                // A more robust solution might involve a custom framing protocol or
-                // expecting exactly one JSON per line from ascent-obs.
+            // Read data from stdout into read_buf
+            match reader.read(&mut read_buf).await {
                 Ok(0) => {
                     info!("Reader task reached EOF on stdout. Exiting.");
+                    if !process_buf.is_empty() {
+                        warn!(
+                            "Reader task exited with unprocessed data in buffer ({} bytes): '{}'",
+                            process_buf.len(),
+                            String::from_utf8_lossy(&process_buf).chars().take(100).collect::<String>() // Log start of remaining data
+                        );
+                        // Consider one last parse attempt on process_buf here if necessary
+                    }
                     break; // End of stream
                 }
-                Ok(bytes_read) => {
-                    if bytes_read == 0 { // Should be caught by Ok(0) but belt-and-suspenders
-                        continue;
-                    }
-                    // Convert buffer to string slice (handle potential UTF-8 errors)
-                    match std::str::from_utf8(&buffer) {
-                        Ok(data_str) => {
-                            debug!("Reader task received data chunk: {}", data_str.trim());
-
-                            // Use a streaming deserializer to handle multiple JSON objects
-                            let stream =
-                                serde_json::Deserializer::from_str(data_str).into_iter::<EventNotification>();
-
-                            for result in stream {
-                                match result {
-                                    Ok(event) => {
-                                        debug!("Parsed event: {:?}", event);
-                                        // Send the successfully parsed event
-                                        if event_sender.send(Ok(event)).await.is_err() {
-                                            warn!("Reader task failed to send event: receiver dropped.");
-                                            // Break outer loop if receiver is gone
-                                            return; // Exit task immediately
-                                        }
-                                    }
-                                    Err(e) => {
-                                        // Check if the error is because of trailing data (indicating more objects)
-                                        // or a genuine syntax error within an object.
-                                        if e.is_syntax() || e.is_eof() { // is_eof might mean incomplete object read
-                                             // Often indicates incomplete object in the buffer or actual syntax error.
-                                             // If it's consistently `trailing characters`, it means the previous
-                                             // object parsed okay, and we just haven't read the *next* full object yet.
-                                             // We might need more sophisticated buffering/parsing if ascent-obs
-                                             // doesn't guarantee newline delimiters.
-                                             // For now, log and try to continue with the next read.
-                                            if !e.is_eof() { // Don't log partial reads as errors yet
-                                                error!(
-                                                    "Reader task JSON stream parsing error: {} (Data chunk: '{}')",
-                                                    e, data_str.trim()
-                                                );
-                                                 // Send the error if it's not just EOF/incomplete
-                                                 let err_res = Err(ObsError::Deserialization(format!(
-                                                     "Streaming JSON parse error: {} on data: {}", e, data_str.trim()
-                                                 )));
-                                                if event_sender.send(err_res).await.is_err() {
-                                                     warn!("Reader task failed to send parsing error: receiver dropped.");
-                                                     return; // Exit task immediately
-                                                 }
-                                            } else {
-                                                debug!("Reader task encountered EOF during stream parse, likely incomplete object in buffer.");
-                                            }
-
-
-                                        } else {
-                                             // Other errors (IO, data format issues within a valid JSON structure)
-                                            error!("Reader task JSON data error: {} (Data chunk: '{}')", e, data_str.trim());
-                                            let err_res = Err(ObsError::Deserialization(format!(
-                                                "JSON data error: {} on data: {}", e, data_str.trim()
-                                            )));
-                                            if event_sender.send(err_res).await.is_err() {
-                                                warn!("Reader task failed to send parsing error: receiver dropped.");
-                                                return; // Exit task immediately
-                                            }
-                                        }
-                                        // Don't break the outer loop on *all* parse errors,
-                                        // just log and try the next read, unless it's an IO error below.
-                                    }
-                                }
-                            } // end for loop over stream results
-                        }
-                        Err(e) => {
-                             error!("Reader task received invalid UTF-8 data: {}", e);
-                             let err_res = Err(ObsError::PipeError(format!("Invalid UTF-8 data: {}", e)));
-                            if event_sender.send(err_res).await.is_err() {
-                                warn!("Reader task failed to send UTF-8 error: receiver dropped.");
-                            }
-                             // Decide whether to break or continue after UTF-8 error
-                             // Breaking might be safer if data corruption is suspected.
-                             break;
-                        }
-                    }
+                Ok(n) => {
+                    // Append newly read data to the processing buffer
+                    process_buf.extend_from_slice(&read_buf[..n]);
                 }
                 Err(e) => {
                     error!("Reader task failed to read from stdout: {}", e);
                     let err_res = Err(ObsError::PipeError(format!("Read error: {}", e)));
-                    if event_sender.send(err_res).await.is_err() {
-                        warn!("Reader task failed to send read error: receiver dropped.");
-                    }
-                    break; // Definitively exit on IO read error
+                    let _ = event_sender.send(err_res).await; // Ignore send error if stopping
+                    break; // Exit on IO read error
                 }
             }
-        }
+
+            // --- Process the accumulated buffer ---
+            let mut bytes_consumed_in_buffer = 0;
+
+            // Create a Deserializer for the current processing buffer
+            // Loop as long as we can successfully deserialize items or until an error occurs
+            loop {
+                 // Work on a slice starting after the already consumed bytes
+                let current_slice = &process_buf[bytes_consumed_in_buffer..];
+                if current_slice.is_empty() {
+                    break; // Nothing more to process in the buffer for now
+                }
+
+                // Create the Deserializer from the slice
+                let de = Deserializer::from_slice(current_slice);
+                // Get the streaming iterator
+                let mut iter = de.into_iter::<EventNotification>();
+
+                match iter.next() {
+                    Some(Ok(event)) => {
+                        // Successfully parsed an event
+                        debug!("Parsed event: {:?}", event);
+                        // Update total consumed bytes based on the iterator's offset AFTER success
+                        bytes_consumed_in_buffer += iter.byte_offset();
+
+                        // Send the event
+                        if event_sender.send(Ok(event)).await.is_err() {
+                            warn!("Reader task failed to send event: receiver dropped.");
+                            return; // Exit task if receiver is gone
+                        }
+                        // Continue inner loop to try and parse the *next* object from the remaining buffer slice
+                    }
+                    Some(Err(e)) => {
+                        // Deserialization failed for an item in the stream
+                        let error_offset = iter.byte_offset(); // Offset *within the current_slice* where error occurred
+
+                        if e.is_eof() {
+                            // EOF error means the slice ended mid-object. This is expected.
+                            // We need more data. Break the inner loop.
+                            // Don't increment bytes_consumed_in_buffer for EOF.
+                            debug!("Parser needs more data (EOF encountered).");
+                            break; // Break inner loop to read more data
+                        } else {
+                            // Syntax or Data error. Log it.
+                            error!(
+                                "JSON parse error: {} (at offset {} within current parse attempt, absolute {}) Context: '{}'",
+                                e,
+                                error_offset,
+                                bytes_consumed_in_buffer + error_offset, // Approximate absolute offset
+                                String::from_utf8_lossy(current_slice).chars().take(80).collect::<String>()
+                            );
+
+                            // Send the error notification
+                            let err_res = Err(ObsError::Deserialization(format!("JSON Parse Error: {}", e)));
+                            if event_sender.send(err_res).await.is_err() {
+                                warn!("Reader task failed to send parsing error: receiver dropped.");
+                                return; // Exit task
+                            }
+
+                            // Consume the buffer *up to the error* to avoid retrying the bad data.
+                            // This might discard subsequent valid objects if the error was recoverable,
+                            // but it's safer than getting stuck in a loop on bad data.
+                            bytes_consumed_in_buffer += error_offset;
+
+                            // Break the inner loop; we'll drain the consumed part and then read more data.
+                            break;
+                        }
+                    }
+                    None => {
+                        // The iterator finished *cleanly* for the current slice (no more items found, no EOF error)
+                        // This usually means the buffer ended exactly after a complete object or contained only whitespace.
+                        // Consume the entire slice we tried to process.
+                        bytes_consumed_in_buffer = process_buf.len();
+                        break; // Break inner loop, nothing more to parse in this buffer load
+                    }
+                }
+            } // End inner loop (processing current buffer content)
+
+            // After trying to process the buffer, drain the consumed part
+            if bytes_consumed_in_buffer > 0 {
+                debug!("Draining {} bytes from process buffer", bytes_consumed_in_buffer);
+                process_buf.drain(..bytes_consumed_in_buffer);
+            }
+            // Reset for next pass (though drain does this implicitly)
+            // bytes_consumed_in_buffer = 0;
+
+        } // End outer loop (reading from stdout)
         info!("Reader task finished.");
     })
 }
 
-/// Task to read and log lines from process stderr.
+
 fn spawn_stderr_task(stderr: tokio::process::ChildStderr) -> JoinHandle<()> {
+   // Stderr task remains the same
     tokio::spawn(async move {
         let mut reader = BufReader::new(stderr);
         let mut line_buf = String::new();

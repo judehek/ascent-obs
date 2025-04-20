@@ -1,224 +1,218 @@
 use ascent_obs_comm::{
+    errors::ObsError, // Import errors directly
+    recorder::{EventReceiver, Recorder}, // Import Recorder and EventReceiver
     types::{
-        AudioSettings, ErrorEventPayload, FileOutputSettings, GameSourceSettings,
-        RecordingStartedEventPayload, RecordingStoppedEventPayload, RecorderType, SceneSettings,
-        StartCommandPayload, VideoEncoderSettings, VideoSettings,
+        // Import only event types needed for handling
+        ErrorEventPayload, EventNotification, QueryMachineInfoEventPayload,
+        RecordingStartedEventPayload, RecordingStoppedEventPayload,
+        // Event codes
+        EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_READY, EVT_RECORDING_STARTED, EVT_RECORDING_STOPPED,
     },
-    ObsError, Recorder,
 };
+use log::debug;
 use std::io::{self, Write};
 use tokio;
 
 #[tokio::main]
 async fn main() {
-// Initialize env_logger instead of simple_logger
-env_logger::init();
-if let Err(e) = run_recorder().await {
-    eprintln!("Recorder encountered an error: {}", e);
-}
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init(); // Default to info level
+    if let Err(e) = run_recorder().await {
+        eprintln!("Recorder encountered an error: {}", e);
+        // Consider adding specific error handling based on ObsError variants
+        // if let ObsError::Configuration(msg) = e {
+        //     eprintln!("Configuration Error: {}", msg);
+        // }
+    }
 }
 
-const ASCENT_OBS_PATH: &str = "C:/path/to/file";
-const FILE_PATH: &str = "C:/output/path";
-const ENCODER_ID: &str = "jim_nvenc";
-const TARGET_PID: i32 = 22748; // Make sure this PID is correct when you run!
-
-// --- Event Codes for matching ---
-const EVT_READY: i32 = 3;
-const EVT_RECORDING_STARTED: i32 = 4;
-const EVT_RECORDING_STOPPED: i32 = 6;
-const EVT_ERR: i32 = 2;
-// ---
+const ASCENT_OBS_PATH: &str =
+    "/Users/judeb/AppData/Local/Ascent/OBS_Organized_Build/bin/64bit/ascent-obs.exe";
+const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
+const TARGET_PID: i32 = 23404; // !! Make sure this PID is correct when you run! !!
 
 async fn run_recorder() -> Result<(), ObsError> {
-    println!("Starting recorder...");
-    // NOTE: Consider using a unique channel ID if running multiple instances
-    // or stick to stdio if ASCENT_OBS_PATH is used directly without Overwolf manager
-    let (recorder, mut event_receiver) = Recorder::start(ASCENT_OBS_PATH, 128).await?;
-    println!("Recorder started (ow-obs process should be running).");
+    println!("Configuring recorder...");
 
-    // Spawn a task to listen for events
+    // --- Use RecorderBuilder to start the process ---
+    let (recorder, mut event_receiver) = Recorder::builder(ASCENT_OBS_PATH)
+        // .event_buffer_size(256) // Optional: Set buffer size
+        .build()
+        .await?;
+
+    println!("Recorder process started.");
+
+    // --- Spawn Event Listener Task (largely unchanged) ---
     let event_handle = tokio::spawn(async move {
         println!("Event listener task started.");
         while let Some(event_result) = event_receiver.recv().await {
             match event_result {
                 Ok(notification) => {
-                    let event_code_raw = notification.event; // Get the raw i32 code
-                    let event_code: Option<i32> =
-                        serde_json::from_value(serde_json::Value::from(event_code_raw)).ok();
-
-                    println!(
-                        "Received Event -> Code: {} ({:?}), ID: {:?}, Payload: {:?}",
-                        event_code_raw, event_code, notification.identifier, notification.payload
-                    );
-
-                    // --- Process specific events ---
-                    match event_code_raw {
-                        EVT_READY => {
-                            if let Some(id) = notification.identifier {
-                                println!("Capture (id: {}) is READY.", id);
-                            } else {
-                                println!("Capture is READY (no id).")
-                            }
-                        }
-                        EVT_RECORDING_STARTED => {
-                            if let Some(id) = notification.identifier {
-                                println!(">>> Recording (id: {}) STARTED. <<<", id); // Highlight this
-                                match notification
-                                    .deserialize_payload::<RecordingStartedEventPayload>()
-                                {
-                                    Ok(Some(payload)) => {
-                                        println!("  Visible source: {}", payload.source)
-                                    }
-                                    Ok(None) => println!("  (No payload data)"),
-                                    Err(e) => {
-                                        eprintln!("  Error parsing RECORDING_STARTED payload: {}", e)
-                                    }
-                                }
-                            }
-                        }
-                        EVT_RECORDING_STOPPED => {
-                            if let Some(id) = notification.identifier {
-                                println!("<<< Recording (id: {}) STOPPED. >>>", id); // Highlight this
-                                match notification
-                                    .deserialize_payload::<RecordingStoppedEventPayload>()
-                                {
-                                    Ok(Some(payload)) => println!(
-                                        "  Code: {}, Duration: {}ms, Error: {:?}",
-                                        payload.code, payload.duration, payload.last_error
-                                    ),
-                                    Ok(None) => println!("  (No payload data)"),
-                                    Err(e) => {
-                                        eprintln!("  Error parsing RECORDING_STOPPED payload: {}", e)
-                                    }
-                                }
-                            }
-                        }
-                        EVT_ERR => {
-                            eprintln!("!!! Received ERROR event! ID: {:?} !!!", notification.identifier);
-                            match notification.deserialize_payload::<ErrorEventPayload>() {
-                                Ok(Some(payload)) => eprintln!(
-                                    "  Code: {}, Desc: {:?}",
-                                    payload.code, payload.desc
-                                ),
-                                Ok(None) => eprintln!("  (No error payload data)"),
-                                Err(e) => eprintln!("  Error parsing ERR payload: {}", e),
-                            }
-                        }
-                        // Add cases for other events you care about
-                        _ => {
-                            // Optionally log unhandled events or their raw payload
-                            // if let Some(payload_value) = notification.payload {
-                            //     println!("  Payload: {}", payload_value);
-                            // }
-                        }
-                    }
+                    handle_event(notification); // Delegate to separate function
                 }
                 Err(e) => {
                     eprintln!("Error receiving event from channel: {}", e);
-                    // Consider if the client should shut down on channel errors
-                    break;
+                    break; // Stop listening on channel error
                 }
             }
         }
         println!("Event listener task finished.");
     });
 
-    println!("\n>>> You have 5 seconds to Alt+Tab to League of Legends (PID: {}) <<<", TARGET_PID);
+    // --- Example: Query Machine Info ---
+    let query_id = recorder.query_machine_info().await?;
+    println!("\nSent Query Machine Info command (id: {})", query_id);
+    // You would look for EVT_QUERY_MACHINE_INFO with this ID in the event handler
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await; // Give time for query response
+
+    // --- Start Recording using the Builder ---
+    println!(
+        "\n>>> You have 5 seconds to Alt+Tab to League of Legends (PID: {}) <<<",
+        TARGET_PID
+    );
     println!(">>> Recording will automatically start after the countdown...");
     io::stdout().flush().unwrap();
-    
+
     // Countdown display
     for i in (1..=5).rev() {
         print!("\rStarting recording in {} seconds...", i);
         io::stdout().flush().unwrap();
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
-    println!("\rProceeding to send start command...");
+    println!("\rSending start recording command...          "); // Clear countdown line
 
+    let recording_id = recorder
+        .start_video_recording() // Get the builder
+        .output_file(FILE_PATH) // Set required path
+        .capture_game(TARGET_PID) // Set required PID
+        // Optional settings:
+        // .video_encoder("jim_nvenc") // Default is jim_nvenc anyway
+        // .fps(60)                     // Default is 60
+        // .resolution(1920, 1080)      // Default is 1920x1080
+        // .show_game_cursor(true)      // Default is true
+        // .audio_sample_rate(48000)    // Default is 48000
+        .start() // Build payload and send command
+        .await?; // Await the send operation
 
-    // --- Define Start Payload ---
-    let start_id = 101;
-    let video_settings = VideoSettings {
-        video_encoder: VideoEncoderSettings {
-            encoder_id: ENCODER_ID.to_string(),
-            ..Default::default()
-        },
-        game_cursor: Some(true),
-        fps: Some(60), // Match your previous tests
-        base_width: Some(1920),
-        base_height: Some(1080),
-        output_width: Some(1920),
-        output_height: Some(1080),
-        ..Default::default()
-    };
-    let audio_settings = AudioSettings {
-        sample_rate: Some(48000), // Match Overwolf logs
-        ..Default::default()
-    };
-    let scene_settings = SceneSettings {
-        game: Some(GameSourceSettings {
-            process_id: Some(TARGET_PID),
-            foreground: Some(true), // **** CHANGED TO TRUE ****
-            allow_transparency: Some(false),
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-    let file_settings = FileOutputSettings {
-        filename: Some(FILE_PATH.to_string()),
-        ..Default::default()
-    };
+    println!("Start recording command sent (id: {})", recording_id);
 
-    let start_payload = StartCommandPayload {
-        recorder_type: RecorderType::Video,
-        video_settings: Some(video_settings),
-        audio_settings: Some(audio_settings),
-        file_output: Some(file_settings),
-        scene_settings: Some(scene_settings),
-        ..Default::default()
-    };
+    // Let it run
+    println!("Waiting 10 seconds for recording...");
+    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
 
-    let json = serde_json::to_string_pretty(&start_payload).unwrap();
-    println!("Sending Start payload (id: {}):\n{}", start_id, json);
-
-    if let Err(e) = recorder.start_capture(start_id, start_payload).await {
-        eprintln!("Failed to send start command: {}", e);
-    } else {
-        println!("Start command sent (id: {})", start_id);
-    }
-
-    // Let it run for a bit (longer delay to be safe)
-    println!("Waiting 20 seconds for recording...");
-    tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
-
-    // --- Example: Stop the recording ---
-    println!("Sending Stop command (id: {})...", start_id);
-    if let Err(e) = recorder.stop_capture(start_id, RecorderType::Video).await {
-        eprintln!("Failed to send stop command: {}", e);
-    } else {
-        println!("Stop command sent (id: {})", start_id);
-    }
+    // --- Stop the recording ---
+    println!("Sending Stop command (id: {})...", recording_id);
+    recorder.stop_recording(recording_id).await?; // Use the specific stop method
+    println!("Stop command sent (id: {})", recording_id);
 
     // Allow time for stop event processing
     tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
 
     // --- Shutdown ---
     println!("Shutting down recorder...");
-    if let Err(e) = recorder.shutdown().await {
-        eprintln!("Error during shutdown: {}", e);
-    } else {
-        println!("Recorder shutdown message sent.");
-    }
+    recorder.shutdown().await?; // Consume the recorder instance
+    println!("Recorder shutdown message sent.");
 
-    // Wait for the event listener task to finish (or a timeout)
-     println!("Waiting for event listener task to potentially finish...");
-    // Wait longer to ensure all messages might have been processed
-    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-    // The handle itself might finish earlier if the receiver channel closes upon shutdown
-    // let _ = event_handle.await; // You can optionally await it fully
+    // Wait for the event listener task to potentially finish
+    println!("Waiting a few seconds for event listener cleanup...");
+    // Wait slightly longer to ensure shutdown messages might have been processed
+    let _ = tokio::time::timeout(tokio::time::Duration::from_secs(5), event_handle).await;
+    // Handle timeout or join error if needed
 
     println!("Rust script finished.");
-
     Ok(())
+}
+
+// --- Event Handling Function ---
+fn handle_event(notification: EventNotification) {
+    let event_code = notification.event;
+    let id_str = notification
+        .identifier
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| "None".to_string());
+
+    debug!(
+        "Received Event -> Code: {}, ID: {}, Raw Payload: {:?}",
+        event_code,
+        id_str,
+        notification.payload // Log raw payload only at debug level
+    );
+
+    match event_code {
+        EVT_READY => {
+            println!("---> Event: READY (ID: {}) <---", id_str);
+        }
+        EVT_RECORDING_STARTED => {
+            println!(
+                "---> Event: RECORDING_STARTED (ID: {}) <---",
+                id_str
+            );
+            match notification.deserialize_payload::<RecordingStartedEventPayload>() {
+                Ok(Some(payload)) => {
+                    println!("     Source: {}, Window Capture: {:?}", payload.source, payload.is_window_capture)
+                }
+                Ok(None) => println!("     (No payload data)"),
+                Err(e) => eprintln!("     Error parsing RECORDING_STARTED payload: {}", e),
+            }
+        }
+        EVT_RECORDING_STOPPED => {
+            println!(
+                "---> Event: RECORDING_STOPPED (ID: {}) <---",
+                id_str
+            );
+            match notification.deserialize_payload::<RecordingStoppedEventPayload>() {
+                Ok(Some(payload)) => println!(
+                    "     Code: {}, Duration: {}ms, Error: {:?}, Res: {:?}x{:?}, Stats: {:?}",
+                    payload.code,
+                    payload.duration,
+                    payload.last_error,
+                    payload.output_width,
+                    payload.output_height,
+                    payload.stats_data.is_some() // Just indicate if stats exist
+                ),
+                Ok(None) => println!("     (No payload data)"),
+                Err(e) => eprintln!("     Error parsing RECORDING_STOPPED payload: {}", e),
+            }
+        }
+        EVT_QUERY_MACHINE_INFO => {
+             println!(
+                "---> Event: QUERY_MACHINE_INFO (ID: {}) <---",
+                id_str
+            );
+             match notification.deserialize_payload::<QueryMachineInfoEventPayload>() {
+                Ok(Some(payload)) => {
+                    println!("     Audio In: {} devices", payload.audio_input_devices.len());
+                    println!("     Audio Out: {} devices", payload.audio_output_devices.len());
+                    println!("     Video Encoders:");
+                    for enc in payload.video_encoders {
+                         println!("       - ID: {}, Desc: {}, Valid: {}", enc.encoder_type, enc.description, enc.valid);
+                    }
+                     println!("     WinRT Capture Supported: {}", payload.winrt_capture_supported);
+                }
+                Ok(None) => println!("     (No payload data)"),
+                Err(e) => eprintln!("     Error parsing QUERY_MACHINE_INFO payload: {}", e),
+             }
+        }
+        EVT_ERR => {
+            eprintln!("!!! ---> Event: ERROR (ID: {}) <--- !!!", id_str);
+            match notification.deserialize_payload::<ErrorEventPayload>() {
+                Ok(Some(payload)) => {
+                    eprintln!("     Code: {}, Desc: {:?}", payload.code, payload.desc);
+                    if let Some(data) = payload.data {
+                         eprintln!("     Data: {}", data);
+                    }
+                }
+                Ok(None) => eprintln!("     (No error payload data)"),
+                Err(e) => eprintln!("     Error parsing ERR payload: {}", e),
+            }
+        }
+        // Add cases for other events if needed (e.g., EVT_RECORDING_STOPPING)
+        _ => {
+             println!("---> Event: UNHANDLED (Code: {}, ID: {}) <---", event_code, id_str);
+             // Optionally log the payload for debugging unhandled events
+             // if let Some(payload_value) = notification.payload {
+             //     println!("     Payload: {}", payload_value);
+             // }
+        }
+    }
 }
