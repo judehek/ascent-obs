@@ -20,15 +20,15 @@ BEGIN
   BEGIN
     BLOCK "040904B0"
     BEGIN
-      VALUE "CompanyName", "Overwolf"
-      VALUE "FileDescription", "Overwolf Graphics Hook"
+      VALUE "CompanyName", "Ascent"
+      VALUE "FileDescription", "Ascent Graphics Hook"
       VALUE "FileVersion", HOOK_VERSION_NAME
       VALUE "InternalName", "graphics"
       VALUE "OriginalFilename", "graphics"
-      VALUE "ProductName", "Overwolf Graphics"
+      VALUE "ProductName", "Ascent Graphics"
       VALUE "ProductVersion", HOOK_VERSION_NAME
-      VALUE "Comments", "Overwolf"
-      VALUE "LegalCopyright", "Copyright Overwolf © 2024"
+      VALUE "Comments", "Ascent"
+      VALUE "LegalCopyright", "Copyright Ascent © 2025"
     END
   END
 

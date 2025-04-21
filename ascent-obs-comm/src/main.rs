@@ -21,7 +21,7 @@ const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/OBS_Organized_Build/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 8572; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 20300; // !! Make sure this PID is correct when you run! !!
 
 async fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
