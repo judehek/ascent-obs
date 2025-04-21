@@ -184,7 +184,7 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="large.ico">
+    <Image Include="logo.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

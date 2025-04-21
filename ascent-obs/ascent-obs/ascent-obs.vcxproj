@@ -421,7 +421,7 @@ xcopy /Y  $(TargetPath) $(SolutionDir)runtime\bin\64bit</Command>
     <ResourceCompile Include="ascent-obs.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="large.ico" />
+    <Image Include="logo.ico" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\libowobs\libowobs.vcxproj">
