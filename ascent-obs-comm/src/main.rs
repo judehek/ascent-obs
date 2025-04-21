@@ -21,45 +21,31 @@ const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/OBS_Organized_Build/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 24044; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 9800; // !! Make sure this PID is correct when you run! !!
 
 async fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
 
     println!("Recorder process started.");
-    
+
     // --- Example: Query Machine Info ---
     // Note: Our new API just returns an ID but we can't actually listen for the response
     match ascent_obs_comm::query_machine_info(ASCENT_OBS_PATH).await {
-        Ok(machine_info) => {
-            println!("\nQuery Machine Info completed successfully!");
-            println!("Found {} video encoders and {} audio devices:", 
-                machine_info.video_encoders.len(),
-                machine_info.audio_input_devices.len() + machine_info.audio_output_devices.len());
-            
-            // Print some details about the encoders
-            if !machine_info.video_encoders.is_empty() {
-                println!("\nAvailable video encoders:");
-                for encoder in &machine_info.video_encoders {
-                    println!("  - {}: {} (Valid: {})", 
-                        encoder.encoder_type, 
-                        encoder.description, 
-                        encoder.valid);
-                }
-            }
-            
-            // Optionally print audio devices if you want
-            // if !machine_info.audio_input_devices.is_empty() {
-            //     println!("\nInput audio devices:");
-            //     for device in &machine_info.audio_input_devices {
-            //         println!("  - {}", device.name);
-            //     }
-            // }
-        },
-        Err(e) => {
-            println!("\nFailed to query machine info: {}", e);
-        }
+    Ok(machine_info) => {
+        println!("\nQuery Machine Info completed successfully!");
+        
+        // Print the entire struct with pretty formatting
+        println!("Machine Info: {:#?}", machine_info);
+        
+        // You can still keep the summary if you want
+        println!("Found {} video encoders and {} audio devices:", 
+            machine_info.video_encoders.len(),
+            machine_info.audio_input_devices.len() + machine_info.audio_output_devices.len());
+    },
+    Err(e) => {
+        println!("\nFailed to query machine info: {}", e);
     }
+}
 
     // --- Start Recording using RecordingConfig ---
     println!(
@@ -80,7 +66,7 @@ async fn run_recorder() -> Result<(), ObsError> {
     // Create a RecordingConfig and start recording
     let config = RecordingConfig::new(FILE_PATH, TARGET_PID)
         // Optional settings:
-        // .with_encoder("jim_nvenc")       // Default is jim_nvenc anyway
+        .with_encoder("jim_nvenc")       // Default is jim_nvenc anyway
         // .with_fps(60)                    // Default is 60
         // .with_resolution(1920, 1080)     // Default is 1920x1080
         // .with_cursor(true)               // Default is true

@@ -8,23 +8,23 @@
 
 #include "hook-helpers.h"
 
-#define EVENT_CAPTURE_RESTART L"OW_CaptureHook_Restart"
-#define EVENT_CAPTURE_STOP    L"OW_CaptureHook_Stop"
+#define EVENT_CAPTURE_RESTART L"Ascent_CaptureHook_Restart"
+#define EVENT_CAPTURE_STOP    L"Ascent_CaptureHook_Stop"
 
-#define EVENT_HOOK_READY      L"OW_CaptureHook_HookReady"
-#define EVENT_HOOK_EXIT       L"OW_CaptureHook_Exit"
+#define EVENT_HOOK_READY      L"Ascent_CaptureHook_HookReady"
+#define EVENT_HOOK_EXIT       L"Ascent_CaptureHook_Exit"
 
-#define EVENT_HOOK_INIT       L"OW_CaptureHook_Initialize"
+#define EVENT_HOOK_INIT       L"Ascent_CaptureHook_Initialize"
 
-#define WINDOW_HOOK_KEEPALIVE L"OW_CaptureHook_KeepAlive"
+#define WINDOW_HOOK_KEEPALIVE L"Ascent_CaptureHook_KeepAlive"
 
-#define MUTEX_TEXTURE1        L"OW_CaptureHook_TextureMutex1"
-#define MUTEX_TEXTURE2        L"OW_CaptureHook_TextureMutex2"
+#define MUTEX_TEXTURE1        L"Ascent_CaptureHook_TextureMutex1"
+#define MUTEX_TEXTURE2        L"Ascent_CaptureHook_TextureMutex2"
 
-#define SHMEM_HOOK_INFO       L"OW_CaptureHook_HookInfo"
-#define SHMEM_TEXTURE         L"OW_CaptureHook_Texture"
+#define SHMEM_HOOK_INFO       L"Ascent_CaptureHook_HookInfo"
+#define SHMEM_TEXTURE         L"Ascent_CaptureHook_Texture"
 
-#define PIPE_NAME             "OW_CaptureHook_Pipe"
+#define PIPE_NAME             "Ascent_CaptureHook_Pipe"
 
 #define SWITCH_TO_SHM_CAPTURE_FALLBACK_TIMEUOT 10000 // 10 second
 
