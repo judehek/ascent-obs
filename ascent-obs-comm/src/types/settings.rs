@@ -247,7 +247,7 @@ pub struct SceneSettings { // Represents the C++ "sources" object
 #[serde(rename_all = "camelCase")]
 pub struct ReplaySettings {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_time_sec: Option<i64>,
+    pub max_time_sec: Option<u32>,
     // Other replay-specific settings like buffer size might go here if controllable
 }
 

@@ -2,10 +2,13 @@ use crate::communication::ObsClient;
 use crate::errors::ObsError;
 use crate::types::{
     // Keep necessary types for internal use
-    AudioDeviceSettings, AudioSettings, ErrorEventPayload, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, SceneSettings, StartCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_STOP, EVT_ERR, EVT_QUERY_MACHINE_INFO, VIDEO_ENCODER_ID_NVENC_NEW
+    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, EVT_ERR, EVT_QUERY_MACHINE_INFO, VIDEO_ENCODER_ID_NVENC_NEW
 };
 use crate::RecordingConfig;
 use log::{debug, error, info, warn};
+use serde_json::json;
+use tokio::task::JoinHandle;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI32, Ordering};
 
@@ -21,7 +24,10 @@ fn generate_identifier() -> i32 {
 #[derive(Debug)]
 pub struct Recorder {
     client: ObsClient,
+    config: RecordingConfig,
     active_recording_id: tokio::sync::Mutex<Option<i32>>,
+    active_replay_buffer_id: tokio::sync::Mutex<Option<i32>>,
+    _event_drain_task: JoinHandle<()>
 }
 
 impl Recorder {
@@ -32,6 +38,7 @@ impl Recorder {
     /// * `buffer_size` - Optional size of the internal buffer. Default is 128.
     pub async fn new(
         ascent_obs_path: impl Into<PathBuf>,
+        config: RecordingConfig,
         buffer_size: Option<usize>,
     ) -> Result<Self, ObsError> {
         let path = ascent_obs_path.into();
@@ -39,11 +46,28 @@ impl Recorder {
         
         // Start the client but discard the event receiver
         let buffer_size = buffer_size.unwrap_or(128);
-        let (client, _event_receiver) = ObsClient::start(path, None, buffer_size).await?;
+        let (client, event_receiver) = ObsClient::start(path, None, buffer_size).await?;
+
+        // Spawn a task that just drains the channel
+        let drain_task = tokio::spawn(async move {
+            let mut receiver = event_receiver;
+            while let Some(event) = receiver.recv().await {
+                // Optionally log events if you want to see them
+                match &event {
+                    Ok(notification) => info!("Received event: {:?}", notification),
+                    Err(e) => warn!("Received error event: {:?}", e),
+                }
+                // Just drop the event - we're only draining the channel
+            }
+            info!("Event drain task finished");
+        });
         
         Ok(Self {
             client,
+            config,
             active_recording_id: tokio::sync::Mutex::new(None),
+            active_replay_buffer_id: tokio::sync::Mutex::new(None),
+            _event_drain_task: drain_task,
         })
     }
 
@@ -59,9 +83,9 @@ impl Recorder {
     ///     .with_resolution(1920, 1080);
     /// let recording_id = recorder.start_recording(config).await?;
     /// ```
-    pub async fn start_recording(&self, config: RecordingConfig) -> Result<i32, ObsError> {
+    pub async fn start_recording(&self) -> Result<i32, ObsError> {
         let mut active_id_guard = self.active_recording_id.lock().await;
-
+    
         if active_id_guard.is_some() {
             error!(
                 "Start recording failed: another recording (id: {:?}) is already active.",
@@ -69,36 +93,36 @@ impl Recorder {
             );
             return Err(ObsError::AlreadyRecording);
         }
-
+    
         let identifier = generate_identifier();
-        let (output_width, output_height) = config.resolution.unwrap_or((1920, 1080));
-        let fps = config.fps.unwrap_or(60);
-        let encoder_id = config.encoder_id
-            .unwrap_or_else(|| VIDEO_ENCODER_ID_NVENC_NEW.to_string());
-        let game_cursor = config.show_cursor.unwrap_or(true);
-        let sample_rate = config.sample_rate.unwrap_or(48000);
+        let config = &self.config;
+        
+        let mut encoder_settings = HashMap::new();
+        encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
 
+        // No need for unwrap_or calls anymore since defaults are set in the struct
         let video_settings = VideoSettings {
             video_encoder: VideoEncoderSettings {
-                encoder_id,
+                encoder_id: config.encoder_id.clone(),
+                settings: encoder_settings,
                 ..Default::default()
             },
-            game_cursor: Some(game_cursor),
-            fps: Some(fps),
-            base_width: Some(output_width),
-            base_height: Some(output_height),
-            output_width: Some(output_width),
-            output_height: Some(output_height),
+            game_cursor: Some(config.show_cursor),
+            fps: Some(config.fps),
+            base_width: Some(config.resolution.0),
+            base_height: Some(config.resolution.1),
+            output_width: Some(config.resolution.0),
+            output_height: Some(config.resolution.1),
             ..Default::default()
         };
-
+    
         let audio_settings = AudioSettings {
-            sample_rate: Some(sample_rate),
+            sample_rate: Some(config.sample_rate),
             output_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
             input_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
             ..Default::default()
         };
-
+    
         let scene_settings = SceneSettings {
             game: Some(GameSourceSettings {
                 process_id: Some(config.game_pid),
@@ -108,21 +132,32 @@ impl Recorder {
             }),
             ..Default::default()
         };
-
+    
         let file_settings = FileOutputSettings {
             filename: Some(config.output_file.to_string_lossy().into_owned()),
             ..Default::default()
         };
-
+    
+        // Add replay buffer settings if enabled
+        let replay_settings = if config.replay_buffer_seconds.is_some() && config.replay_buffer_output_file.is_some() {
+            Some(ReplaySettings {
+                max_time_sec: config.replay_buffer_seconds, // Convert seconds to milliseconds
+                ..Default::default()
+            })
+        } else {
+            None
+        };
+    
         let start_payload = StartCommandPayload {
             recorder_type: RecorderType::Video,
             video_settings: Some(video_settings),
             audio_settings: Some(audio_settings),
             file_output: Some(file_settings),
             scene_settings: Some(scene_settings),
+            replay: replay_settings.clone(),
             ..Default::default()
         };
-
+    
         info!(
             "Sending START command (id: {}, type: {:?}, path: {:?}, pid: {})",
             identifier,
@@ -130,23 +165,178 @@ impl Recorder {
             config.output_file,
             config.game_pid
         );
-
+    
         // TODO: we have no idea whether the recording actually started
         *active_id_guard = Some(identifier);
         self.client
             .send_command(CMD_START, Some(identifier), start_payload)
             .await?;
 
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    
+        // Start the replay buffer if it's enabled
+        if replay_settings.is_some() {
+            self.start_replay_buffer().await?;
+        }
+    
         Ok(identifier)
     }
 
+    /// Starts the replay buffer if enabled in configuration
+    async fn start_replay_buffer(&self) -> Result<i32, ObsError> {
+        let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
+        
+        if active_replay_id_guard.is_some() {
+            warn!("Replay buffer is already active.");
+            return Ok(*active_replay_id_guard.as_ref().unwrap());
+        }
+        
+        let identifier = generate_identifier();
+        
+        // For starting replay buffer, we typically use the same START command with different recorder type
+        let replay_start_payload = StartCommandPayload {
+            recorder_type: RecorderType::Replay,
+            // We may need to re-specify some settings here, or they might be inherited from the main recording
+            // This depends on how the OBS backend is implemented
+            ..Default::default()
+        };
+        
+        info!(
+            "Sending START command for replay buffer (id: {}, type: {:?}, buffer length: {} seconds)",
+            identifier,
+            replay_start_payload.recorder_type,
+            self.config.replay_buffer_seconds.unwrap()
+        );
+        
+        *active_replay_id_guard = Some(identifier);
+        self.client
+            .send_command(CMD_START, Some(identifier), replay_start_payload)
+            .await?;
+        
+        Ok(identifier)
+    }
+    
+    /// Saves the current replay buffer to the configured file
+    pub async fn save_replay_buffer(&self) -> Result<(), ObsError> {
+        let current_replay_id = { // Create a smaller scope for the lock guard
+            let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
+    
+            if active_replay_id_guard.is_none() {
+                error!("Cannot save replay buffer: replay buffer is not active");
+                return Err(ObsError::NotRecording);
+            }
+    
+            let id = *active_replay_id_guard.as_ref().unwrap();
+    
+            // Make sure we have an output path configured
+            let output_path = match &self.config.replay_buffer_output_file {
+                Some(path) => path.to_string_lossy().into_owned(),
+                None => {
+                    error!("Cannot save replay buffer: no output file configured");
+                    return Err(ObsError::ShouldNotHappen("No replay buffer output file configured".to_string()));
+                }
+            };
+    
+            // Get the buffer duration in milliseconds
+            let buffer_duration = match self.config.replay_buffer_seconds {
+                Some(seconds) => seconds * 1000, // Convert to milliseconds
+                None => {
+                    error!("Cannot save replay buffer: no buffer duration configured");
+                    return Err(ObsError::ShouldNotHappen("No replay buffer duration configured".to_string()));
+                }
+            };
+    
+            // Step 1: Send command to save the replay buffer contents
+            let save_id = generate_identifier();
+            info!(
+                "Sending SAVE_REPLAY_BUFFER command (id: {}, duration: {}ms, path: {:?})",
+                save_id, buffer_duration, output_path
+            );
+            let save_payload = StartReplayCaptureCommandPayload {
+                head_duration: buffer_duration as i64,
+                path: output_path,
+                thumbnail_folder: None,
+            };
+            self.client
+                .send_command(CMD_START_REPLAY_CAPTURE, Some(save_id), save_payload)
+                .await?;
+    
+            // Wait a second to ensure the save command is processed before stopping
+            // (Consider waiting for Event 14 confirmation instead if possible/reliable)
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    
+            // Step 2: Stop the current replay buffer
+            info!(
+                "Sending STOP command for replay buffer (id: {}, type: {:?})",
+                id, RecorderType::Replay
+            );
+            let stop_payload = StopCommandPayload {
+                recorder_type: RecorderType::Replay,
+            };
+            self.client
+                .send_command(CMD_STOP, Some(id), stop_payload)
+                .await?;
+    
+            // Clear the active replay buffer ID since we've stopped it
+            *active_replay_id_guard = None;
+    
+            // Return the ID we just stopped
+            id
+            // The lock guard `active_replay_id_guard` goes out of scope here, releasing the lock
+        }; // LOCK RELEASED
+    
+        // Wait a second to ensure the stop command is processed before starting a new buffer
+        // (Consider waiting for Event 11 confirmation instead if possible/reliable)
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    
+        // Step 3: Start a new replay buffer with a new identifier
+        info!("Attempting to start new replay buffer (after stopping id: {})...", current_replay_id);
+        match self.start_replay_buffer().await {
+            Ok(new_replay_id) => {
+                info!("Successfully started new replay buffer with id: {}", new_replay_id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to start new replay buffer: {}", e);
+                Err(e)
+            }
+        }
+    }
+
     /// Stops a specific recording.
-    ///
-    /// # Arguments
-    /// * `identifier` - The identifier returned when the recording was started.
     pub async fn stop_recording(&self) -> Result<(), ObsError> {
         let mut active_id_guard = self.active_recording_id.lock().await;
+        let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
 
+        // First stop the replay buffer if it's active
+        if let Some(replay_identifier) = *active_replay_id_guard {
+            info!(
+                "Sending STOP command for replay buffer (id: {}, type: {:?})",
+                replay_identifier,
+                RecorderType::Replay
+            );
+            
+            let replay_stop_payload = StopCommandPayload {
+                recorder_type: RecorderType::Replay,
+            };
+
+            // Attempt to send the stop command for replay buffer
+            match self.client
+                .send_command(CMD_STOP, Some(replay_identifier), replay_stop_payload)
+                .await {
+                Ok(_) => {
+                    info!("Replay buffer stop command sent successfully for id: {}", replay_identifier);
+                    *active_replay_id_guard = None;
+                }
+                Err(e) => {
+                    error!("Failed to send STOP command for replay buffer id {}: {}", replay_identifier, e);
+                    // We continue to stop the main recording even if stopping the replay buffer fails
+                    *active_replay_id_guard = None;
+                }
+            }
+        }
+
+        // Then stop the main recording
         if let Some(identifier) = *active_id_guard {
             info!(
                 "Sending STOP command (id: {}, type: {:?})",
@@ -184,7 +374,7 @@ impl Recorder {
             // Let's make it an error for clarity.
             Err(ObsError::NotRecording)
         }
-        // Lock is released when active_id_guard goes out of scope
+        // Locks are released when guards go out of scope
     }
 
     /// Shuts down the ascent-obs process and associated communication.

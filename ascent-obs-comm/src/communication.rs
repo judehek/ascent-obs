@@ -115,7 +115,7 @@ impl ObsClient {
             payload,
         };
         // Log the command before serialization if needed (requires Debug on T)
-        // debug!("Preparing to send command: {:?}", command);
+        debug!("Preparing to send command: {:?}", command);
         let json_string = serde_json::to_string(&command).map_err(ObsError::Serialization)?;
         self.send_json_string(json_string).await
     }

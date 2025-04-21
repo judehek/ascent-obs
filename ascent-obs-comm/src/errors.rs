@@ -40,4 +40,7 @@ pub enum ObsError {
 
     #[error("No recording session is currently active")]
     NotRecording,
+
+    #[error("Critical error, this should never happen: {0}")]
+    ShouldNotHappen(String),
 }

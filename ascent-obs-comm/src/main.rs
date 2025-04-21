@@ -20,13 +20,11 @@ async fn main() {
 const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/OBS_Organized_Build/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
-const TARGET_PID: i32 = 23404; // !! Make sure this PID is correct when you run! !!
+const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
+const TARGET_PID: i32 = 27792; // !! Make sure this PID is correct when you run! !!
 
 async fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
-
-    // --- Create the recorder directly with new() ---
-    let recorder = Recorder::new(ASCENT_OBS_PATH, None).await?;
 
     println!("Recorder process started.");
     
@@ -89,13 +87,23 @@ async fn run_recorder() -> Result<(), ObsError> {
         // .with_resolution(1920, 1080)     // Default is 1920x1080
         // .with_cursor(true)               // Default is true
         // .with_sample_rate(48000)         // Default is 48000
+        .with_replay_buffer(Some(30))
+        .with_replay_buffer_output_file(Some(REPLAY_FILE_PATH))
         ;
+        // --- Create the recorder directly with new() ---
+    let recorder = Recorder::new(ASCENT_OBS_PATH, config, None).await?;
     
-    let recording_id = recorder.start_recording(config).await?;
+    let recording_id = recorder.start_recording().await?;
     println!("Start recording command sent (id: {})", recording_id);
 
     // Let it run
-    println!("Waiting 10 seconds for recording...");
+    println!("Waiting 30 seconds for recording...");
+    tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+
+    println!("saving replay buffer...");
+    recorder.save_replay_buffer().await?;
+    println!("saved replay buffer");
+
     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
 
     // --- Stop the recording ---
