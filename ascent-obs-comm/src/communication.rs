@@ -117,6 +117,7 @@ impl ObsClient {
         // Log the command before serialization if needed (requires Debug on T)
         debug!("Preparing to send command: {:?}", command);
         let json_string = serde_json::to_string(&command).map_err(ObsError::Serialization)?;
+        info!("Preparing to send command: {:?}", json_string);
         self.send_json_string(json_string).await
     }
 
@@ -205,6 +206,9 @@ fn spawn_writer_task(
                                  drop(stdin);
                                  return Err(ObsError::PipeError(format!("Flush error: {}", e)));
                             }
+
+                            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                            debug!("Writer task completed 1-second sleep after send");
                         }
                         None => {
                             info!("Writer task command channel closed. Exiting.");
@@ -280,10 +284,12 @@ fn spawn_reader_task(
                         bytes_consumed_in_buffer += iter.byte_offset();
 
                         // Send the event
+                        debug!("Reader task successfully parsed event: {:?}", event);
                         if event_sender.send(Ok(event)).await.is_err() {
                             warn!("Reader task failed to send event: receiver dropped.");
                             return; // Exit task if receiver is gone
                         }
+                        debug!("Reader task successfully sent event to MPSC channel");
                         // Continue inner loop to try and parse the *next* object from the remaining buffer slice
                     }
                     Some(Err(e)) => {

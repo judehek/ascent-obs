@@ -21,15 +21,13 @@ const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/OBS_Organized_Build/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 27792; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 24044; // !! Make sure this PID is correct when you run! !!
 
 async fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
 
     println!("Recorder process started.");
     
-    // Note: We no longer have an event receiver, so we'll skip event handling
-
     // --- Example: Query Machine Info ---
     // Note: Our new API just returns an ID but we can't actually listen for the response
     match ascent_obs_comm::query_machine_info(ASCENT_OBS_PATH).await {

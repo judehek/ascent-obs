@@ -18,8 +18,7 @@ pub struct StartCommandPayload {
      #[serde(skip_serializing_if = "Option::is_none")]
     pub file_output: Option<FileOutputSettings>,
      #[serde(skip_serializing_if = "Option::is_none")]
-     #[serde(rename = "sources")] // Match C++ field name kSettingsScene
-    pub scene_settings: Option<SceneSettings>,
+    pub sources: Option<SceneSettings>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub replay: Option<ReplaySettings>,
     #[serde(skip_serializing_if = "Option::is_none")]

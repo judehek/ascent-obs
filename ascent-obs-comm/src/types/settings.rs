@@ -8,7 +8,6 @@ use super::enums::ObsFlipType; // Import if needed
 pub type EncoderSettings = HashMap<String, serde_json::Value>;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[serde(rename_all = "camelCase")] // Use camelCase for JS compatibility if needed
 pub struct AudioDeviceSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub device_id: Option<String>, // "default", "disabled", or specific ID

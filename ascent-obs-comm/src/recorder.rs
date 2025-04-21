@@ -95,75 +95,16 @@ impl Recorder {
         }
     
         let identifier = generate_identifier();
-        let config = &self.config;
         
-        let mut encoder_settings = HashMap::new();
-        encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
-
-        // No need for unwrap_or calls anymore since defaults are set in the struct
-        let video_settings = VideoSettings {
-            video_encoder: VideoEncoderSettings {
-                encoder_id: config.encoder_id.clone(),
-                settings: encoder_settings,
-                ..Default::default()
-            },
-            game_cursor: Some(config.show_cursor),
-            fps: Some(config.fps),
-            base_width: Some(config.resolution.0),
-            base_height: Some(config.resolution.1),
-            output_width: Some(config.resolution.0),
-            output_height: Some(config.resolution.1),
-            ..Default::default()
-        };
-    
-        let audio_settings = AudioSettings {
-            sample_rate: Some(config.sample_rate),
-            output_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
-            input_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
-            ..Default::default()
-        };
-    
-        let scene_settings = SceneSettings {
-            game: Some(GameSourceSettings {
-                process_id: Some(config.game_pid),
-                foreground: Some(true),
-                allow_transparency: Some(false),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-    
-        let file_settings = FileOutputSettings {
-            filename: Some(config.output_file.to_string_lossy().into_owned()),
-            ..Default::default()
-        };
-    
-        // Add replay buffer settings if enabled
-        let replay_settings = if config.replay_buffer_seconds.is_some() && config.replay_buffer_output_file.is_some() {
-            Some(ReplaySettings {
-                max_time_sec: config.replay_buffer_seconds, // Convert seconds to milliseconds
-                ..Default::default()
-            })
-        } else {
-            None
-        };
-    
-        let start_payload = StartCommandPayload {
-            recorder_type: RecorderType::Video,
-            video_settings: Some(video_settings),
-            audio_settings: Some(audio_settings),
-            file_output: Some(file_settings),
-            scene_settings: Some(scene_settings),
-            replay: replay_settings.clone(),
-            ..Default::default()
-        };
+        // Create payload with common settings for video recording
+        let start_payload = self.create_start_payload(RecorderType::Video, true);
     
         info!(
             "Sending START command (id: {}, type: {:?}, path: {:?}, pid: {})",
             identifier,
             start_payload.recorder_type,
-            config.output_file,
-            config.game_pid
+            self.config.output_file,
+            self.config.game_pid
         );
     
         // TODO: we have no idea whether the recording actually started
@@ -171,11 +112,9 @@ impl Recorder {
         self.client
             .send_command(CMD_START, Some(identifier), start_payload)
             .await?;
-
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     
         // Start the replay buffer if it's enabled
-        if replay_settings.is_some() {
+        if self.config.replay_buffer_seconds.is_some() && self.config.replay_buffer_output_file.is_some() {
             self.start_replay_buffer().await?;
         }
     
@@ -191,15 +130,16 @@ impl Recorder {
             return Ok(*active_replay_id_guard.as_ref().unwrap());
         }
         
+        // Ensure we have the necessary replay buffer configuration
+        if self.config.replay_buffer_seconds.is_none() || self.config.replay_buffer_output_file.is_none() {
+            error!("Cannot start replay buffer: missing replay buffer configuration");
+            return Err(ObsError::ShouldNotHappen("Missing replay buffer configuration".to_string()));
+        }
+        
         let identifier = generate_identifier();
         
-        // For starting replay buffer, we typically use the same START command with different recorder type
-        let replay_start_payload = StartCommandPayload {
-            recorder_type: RecorderType::Replay,
-            // We may need to re-specify some settings here, or they might be inherited from the main recording
-            // This depends on how the OBS backend is implemented
-            ..Default::default()
-        };
+        // Create payload with common settings but specific to replay buffer
+        let replay_start_payload = self.create_start_payload(RecorderType::Replay, false);
         
         info!(
             "Sending START command for replay buffer (id: {}, type: {:?}, buffer length: {} seconds)",
@@ -214,6 +154,80 @@ impl Recorder {
             .await?;
         
         Ok(identifier)
+    }
+
+    fn create_start_payload(&self, recorder_type: RecorderType, include_file_output: bool) -> StartCommandPayload {
+        let config = &self.config;
+        
+        // Create encoder settings
+        let mut encoder_settings = HashMap::new();
+        encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
+    
+        // Create video settings
+        let video_settings = VideoSettings {
+            video_encoder: VideoEncoderSettings {
+                encoder_id: config.encoder_id.clone(),
+                settings: encoder_settings,
+                ..Default::default()
+            },
+            game_cursor: Some(config.show_cursor),
+            fps: Some(config.fps),
+            base_width: Some(config.resolution.0),
+            base_height: Some(config.resolution.1),
+            output_width: Some(config.resolution.0),
+            output_height: Some(config.resolution.1),
+            ..Default::default()
+        };
+    
+        // Create audio settings
+        let audio_settings = AudioSettings {
+            sample_rate: Some(config.sample_rate),
+            output_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
+            input_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
+            ..Default::default()
+        };
+    
+        // Create scene settings
+        let sources = SceneSettings {
+            game: Some(GameSourceSettings {
+                process_id: Some(config.game_pid),
+                foreground: Some(true),
+                allow_transparency: Some(false),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        
+        // Create replay settings if configured
+        let replay_settings = if config.replay_buffer_seconds.is_some() {
+            Some(ReplaySettings {
+                max_time_sec: config.replay_buffer_seconds,
+                ..Default::default()
+            })
+        } else {
+            None
+        };
+        
+        // Create file output settings if requested
+        let file_output = if include_file_output {
+            Some(FileOutputSettings {
+                filename: Some(config.output_file.to_string_lossy().into_owned()),
+                ..Default::default()
+            })
+        } else {
+            None
+        };
+        
+        // Construct and return the payload
+        StartCommandPayload {
+            recorder_type,
+            video_settings: Some(video_settings),
+            audio_settings: Some(audio_settings),
+            sources: Some(sources),
+            file_output,
+            replay: replay_settings,
+            ..Default::default()
+        }
     }
     
     /// Saves the current replay buffer to the configured file
@@ -261,10 +275,6 @@ impl Recorder {
                 .send_command(CMD_START_REPLAY_CAPTURE, Some(save_id), save_payload)
                 .await?;
     
-            // Wait a second to ensure the save command is processed before stopping
-            // (Consider waiting for Event 14 confirmation instead if possible/reliable)
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    
             // Step 2: Stop the current replay buffer
             info!(
                 "Sending STOP command for replay buffer (id: {}, type: {:?})",
@@ -284,10 +294,6 @@ impl Recorder {
             id
             // The lock guard `active_replay_id_guard` goes out of scope here, releasing the lock
         }; // LOCK RELEASED
-    
-        // Wait a second to ensure the stop command is processed before starting a new buffer
-        // (Consider waiting for Event 11 confirmation instead if possible/reliable)
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     
         // Step 3: Start a new replay buffer with a new identifier
         info!("Attempting to start new replay buffer (after stopping id: {})...", current_replay_id);
@@ -424,9 +430,11 @@ pub async fn query_machine_info(
             while let Some(event_result) = event_receiver.recv().await {
                 match event_result {
                     Ok(notification) => {
+                        debug!("Received event type: {}, identifier: {:?}", notification.event, notification.identifier);
                         // Check if this is our response
-                        if notification.event == EVT_QUERY_MACHINE_INFO && 
-                           notification.identifier == Some(identifier) {
+                        // TODO: ascent-obs.exe does NOT return identifier for query machine info
+                        //if notification.event == EVT_QUERY_MACHINE_INFO && notification.identifier == Some(identifier) {
+                        if notification.event == EVT_QUERY_MACHINE_INFO {
                             // Deserialize the payload
                             if let Ok(Some(payload)) = notification.deserialize_payload::<QueryMachineInfoEventPayload>() {
                                 return Ok(payload);
