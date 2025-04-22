@@ -15,7 +15,9 @@ pub struct RecordingConfig {
     pub fps: u32,
     
     /// Output resolution (width, height) (default: 1920x1080)
-    pub resolution: (u32, u32),
+    pub input_resolution: (u32, u32),
+
+    pub output_resolution: (u32, u32),
     
     /// Whether to show the cursor (default: true)
     pub show_cursor: bool,
@@ -40,7 +42,8 @@ impl RecordingConfig {
             output_file: output_file.into(),
             encoder_id: VIDEO_ENCODER_ID_X264.to_string(),
             fps: 30,
-            resolution: (1920, 1080),
+            input_resolution: (1920, 1080),
+            output_resolution: (1920, 1080),
             show_cursor: true,
             sample_rate: 48000,
             bitrate: 6000,
@@ -62,8 +65,13 @@ impl RecordingConfig {
     }
 
     /// Sets the recording resolution.
-    pub fn with_resolution(mut self, width: u32, height: u32) -> Self {
-        self.resolution = (width, height);
+    pub fn with_input_resolution(mut self, width: u32, height: u32) -> Self {
+        self.input_resolution = (width, height);
+        self
+    }
+
+    pub fn with_output_resolution(mut self, width: u32, height: u32) -> Self {
+        self.output_resolution = (width, height);
         self
     }
 

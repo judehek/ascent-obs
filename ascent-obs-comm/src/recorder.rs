@@ -190,10 +190,10 @@ impl Recorder {
             },
             game_cursor: Some(config.show_cursor),
             fps: Some(config.fps),
-            base_width: Some(config.resolution.0),
-            base_height: Some(config.resolution.1),
-            output_width: Some(config.resolution.0),
-            output_height: Some(config.resolution.1),
+            base_width: Some(config.input_resolution.0),
+            base_height: Some(config.input_resolution.1),
+            output_width: Some(config.output_resolution.0),
+            output_height: Some(config.output_resolution.1),
             ..Default::default()
         };
 
