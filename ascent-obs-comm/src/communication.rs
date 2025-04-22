@@ -3,7 +3,8 @@ use crate::errors::ObsError;
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Deserializer;
-use std::io::{BufRead, BufReader, Read, Write}; // Use std::io
+use std::io::{BufRead, BufReader, Read, Write}; use std::os::windows::process::CommandExt;
+// Use std::io
 use std::path::Path;
 use std::process::{Child, ChildStdin, ChildStdout, ChildStderr, Command, Stdio}; // Use std::process
 use std::sync::mpsc; // Use std::sync::mpsc
@@ -24,6 +25,7 @@ pub struct ObsClient {
     command_sender: mpsc::SyncSender<String>, // Use std mpsc Sender
     // No explicit shutdown signal needed; dropping command_sender signals the writer.
 }
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 // Public interface
 impl ObsClient {
@@ -45,6 +47,7 @@ impl ObsClient {
 
         let mut command = Command::new(ascent_obs_path_str); // Use std::process::Command
         command
+            .creation_flags(CREATE_NO_WINDOW)
             // kill_on_drop is implicit for std::process::Child
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
