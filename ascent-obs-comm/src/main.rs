@@ -75,9 +75,9 @@ async fn run_recorder() -> Result<(), ObsError> {
         .with_replay_buffer_output_file(Some(REPLAY_FILE_PATH))
         ;
         // --- Create the recorder directly with new() ---
-    let recorder = Recorder::new(ASCENT_OBS_PATH, config, None).await?;
+    let recorder = Recorder::new(ASCENT_OBS_PATH, config, TARGET_PID, None).await?;
     
-    let recording_id = recorder.start_recording(TARGET_PID).await?;
+    let recording_id = recorder.start_recording().await?;
     println!("Start recording command sent (id: {})", recording_id);
 
     // Let it run
