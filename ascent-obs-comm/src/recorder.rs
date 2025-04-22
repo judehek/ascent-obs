@@ -1,168 +1,186 @@
-use crate::communication::ObsClient;
+// src/wrapper.rs (or wherever your Recorder struct is defined)
+
+// ---- IMPORTS ----
+use crate::communication::ObsClient; // Assumes ObsClient is now the synchronous version
 use crate::errors::ObsError;
 use crate::types::{
-    // Keep necessary types for internal use
-    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, EVT_ERR, EVT_QUERY_MACHINE_INFO, VIDEO_ENCODER_ID_NVENC_NEW
+    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, EVT_ERR, EVT_QUERY_MACHINE_INFO, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
 };
 use crate::RecordingConfig;
 use log::{debug, error, info, warn};
 use serde_json::json;
-use tokio::task::JoinHandle;
+// --- Use standard library equivalents ---
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::mpsc::{RecvTimeoutError, Receiver}; // For query_machine_info
+use std::sync::Mutex; // Use std::sync::Mutex
+use std::thread::{self, JoinHandle}; // Use std::thread
+use std::time::Duration; // For timeouts
 
-// Counter for generating simple identifiers when needed
+// Counter for generating simple identifiers when needed (remains the same)
 static NEXT_IDENTIFIER: AtomicI32 = AtomicI32::new(1);
 
-/// Generates a unique identifier for commands/requests.
+/// Generates a unique identifier for commands/requests. (remains the same)
 fn generate_identifier() -> i32 {
     NEXT_IDENTIFIER.fetch_add(1, Ordering::Relaxed)
 }
 
-/// A high-level client for controlling an ascent-obs recording process.
+/// A high-level client for controlling an ascent-obs recording process (Synchronous Version).
+///
+/// WARNING: Methods on this client (new, start*, save*, stop*, shutdown) are blocking.
+/// Ensure this client is managed appropriately, potentially in its own thread,
+/// to avoid blocking critical parts of your application (like a UI thread).
 #[derive(Debug)]
 pub struct Recorder {
-    client: ObsClient,
+    client: ObsClient, // Now the synchronous client
     config: RecordingConfig,
-    active_recording_id: tokio::sync::Mutex<Option<i32>>,
-    active_replay_buffer_id: tokio::sync::Mutex<Option<i32>>,
+    // --- Use std::sync::Mutex ---
+    active_recording_id: Mutex<Option<i32>>,
+    active_replay_buffer_id: Mutex<Option<i32>>,
     game_pid: i32,
-    _event_drain_task: JoinHandle<()>
+    // --- Use std::thread::JoinHandle ---
+    _event_drain_task: JoinHandle<()>,
 }
 
 impl Recorder {
-    /// Creates a new recorder instance by starting the ascent-obs process.
+    /// Creates a new recorder instance by starting the ascent-obs process (Synchronous).
+    ///
+    /// This function blocks until the process is started and threads are spawned.
     ///
     /// # Arguments
     /// * `ascent_obs_path` - Path to the ascent-obs.exe executable.
-    /// * `buffer_size` - Optional size of the internal buffer. Default is 128.
-    pub async fn new(
+    /// * `config` - Recording configuration.
+    /// * `game_pid` - Process ID of the game to capture.
+    /// * `buffer_size` - Optional size of the internal command/event channels. Default is 128.
+    pub fn new(
         ascent_obs_path: impl Into<PathBuf>,
         config: RecordingConfig,
         game_pid: i32,
         buffer_size: Option<usize>,
     ) -> Result<Self, ObsError> {
         let path = ascent_obs_path.into();
-        info!("Starting ascent-obs process from: {:?}", path);
-        
-        // Start the client but discard the event receiver
-        let buffer_size = buffer_size.unwrap_or(128);
-        let (client, event_receiver) = ObsClient::start(path, None, buffer_size).await?;
+        info!("(Sync) Starting ascent-obs process from: {:?}", path);
 
-        // Spawn a task that just drains the channel
-        let drain_task = tokio::spawn(async move {
-            let mut receiver = event_receiver;
-            while let Some(event) = receiver.recv().await {
-                // Optionally log events if you want to see them
-                match &event {
-                    Ok(notification) => info!("Received event: {:?}", notification),
-                    Err(e) => warn!("Received error event: {:?}", e),
+        let buffer_size = buffer_size.unwrap_or(128);
+        // --- Call the synchronous ObsClient::start ---
+        let (client, event_receiver) = ObsClient::start(path, None, buffer_size)?;
+
+        // --- Spawn a standard OS thread to drain the event channel ---
+        let drain_task = thread::spawn(move || {
+            info!("(Sync) Event drain thread started.");
+            // event_receiver is now std::sync::mpsc::Receiver
+            // Loop while the channel is open. recv() blocks.
+            while let Ok(event_result) = event_receiver.recv() {
+                // Optionally log events
+                match &event_result {
+                    Ok(notification) => info!("Received event: {:?}", notification), // Use trace to avoid spamming logs
+                    Err(e) => warn!("(Sync) Drain Thread Received error event: {:?}", e),
                 }
-                // Just drop the event - we're only draining the channel
+                // Just drop the event
             }
-            info!("Event drain task finished");
+            // recv() returned Err, meaning the channel is closed (likely during shutdown)
+            info!("(Sync) Event drain thread finished (channel closed).");
         });
-        
+
         Ok(Self {
             client,
             config,
-            active_recording_id: tokio::sync::Mutex::new(None),
-            active_replay_buffer_id: tokio::sync::Mutex::new(None),
+            // --- Initialize std::sync::Mutex ---
+            active_recording_id: Mutex::new(None),
+            active_replay_buffer_id: Mutex::new(None),
             game_pid,
-            _event_drain_task: drain_task,
+            _event_drain_task: drain_task, // Store the standard JoinHandle
         })
     }
 
-    /// Starts a video recording session with the given configuration.
+    /// Starts a video recording session with the given configuration (Synchronous).
+    /// Blocks while sending the command.
     ///
-    /// Returns a unique identifier for this recording session that can be used
-    /// to stop it later.
-    ///
-    /// # Example
-    /// ```ignore
-    /// let recording_id = recorder.start_recording().await?;
-    /// ```
-    pub async fn start_recording(&self) -> Result<i32, ObsError> {
-        let mut active_id_guard = self.active_recording_id.lock().await;
-    
+    /// Returns a unique identifier for this recording session.
+    pub fn start_recording(&self) -> Result<i32, ObsError> {
+        // --- Use std::sync::Mutex::lock ---
+        // Use unwrap() for simplicity, assuming PoisonError is fatal. Handle if needed.
+        let mut active_id_guard = self.active_recording_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
+
         if active_id_guard.is_some() {
             error!(
-                "Start recording failed: another recording (id: {:?}) is already active.",
+                "(Sync) Start recording failed: another recording (id: {:?}) is already active.",
                 active_id_guard
             );
             return Err(ObsError::AlreadyRecording);
         }
-        
+
         let identifier = generate_identifier();
-        
-        // Create payload with common settings for video recording
-        let start_payload = self.create_start_payload(RecorderType::Video, true, self.game_pid);
-    
+        let start_payload = self.create_start_payload(RecorderType::Video, true, self.game_pid); // create_start_payload is already sync
+
         info!(
-            "Sending START command (id: {}, type: {:?}, path: {:?}, pid: {})",
+            "(Sync) Sending START command (id: {}, type: {:?}, path: {:?}, pid: {})",
             identifier,
             start_payload.recorder_type,
             self.config.output_file,
             self.game_pid
         );
-    
-        // TODO: we have no idea whether the recording actually started
-        *active_id_guard = Some(identifier);
+
+        // Send command synchronously (blocks)
         self.client
-            .send_command(CMD_START, Some(identifier), start_payload)
-            .await?;
-    
-        // Start the replay buffer if it's enabled
+            .send_command(CMD_START, Some(identifier), start_payload)?;
+
+        // Store the ID *after* successfully sending the command
+        *active_id_guard = Some(identifier);
+
+        // Start the replay buffer if enabled (will block)
         if self.config.replay_buffer_seconds.is_some() && self.config.replay_buffer_output_file.is_some() {
-            self.start_replay_buffer().await?;
+            // Call the now synchronous version
+            self.start_replay_buffer()?;
         }
-    
+
         Ok(identifier)
+        // Mutex guard is dropped here, releasing the lock
     }
 
-    /// Starts the replay buffer if enabled in configuration
-    async fn start_replay_buffer(&self) -> Result<i32, ObsError> {
-        let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
-        
+    /// Starts the replay buffer if enabled in configuration (Synchronous).
+    /// Blocks while sending the command.
+    fn start_replay_buffer(&self) -> Result<i32, ObsError> {
+        let mut active_replay_id_guard = self.active_replay_buffer_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
+
         if active_replay_id_guard.is_some() {
-            warn!("Replay buffer is already active.");
+            warn!("(Sync) Replay buffer is already active.");
+            // Return the existing ID
             return Ok(*active_replay_id_guard.as_ref().unwrap());
         }
-        
-        // Ensure we have the necessary replay buffer configuration
+
         if self.config.replay_buffer_seconds.is_none() || self.config.replay_buffer_output_file.is_none() {
-            error!("Cannot start replay buffer: missing replay buffer configuration");
+            error!("(Sync) Cannot start replay buffer: missing replay buffer configuration");
             return Err(ObsError::ShouldNotHappen("Missing replay buffer configuration".to_string()));
         }
-        
+
         let identifier = generate_identifier();
-        
-        // Create payload with common settings but specific to replay buffer
         let replay_start_payload = self.create_start_payload(RecorderType::Replay, false, self.game_pid);
-        
+
         info!(
-            "Sending START command for replay buffer (id: {}, type: {:?}, buffer length: {} seconds)",
+            "(Sync) Sending START command for replay buffer (id: {}, type: {:?}, buffer length: {} seconds)",
             identifier,
             replay_start_payload.recorder_type,
             self.config.replay_buffer_seconds.unwrap()
         );
-        
-        *active_replay_id_guard = Some(identifier);
+
+        // Send command synchronously
         self.client
-            .send_command(CMD_START, Some(identifier), replay_start_payload)
-            .await?;
-        
+            .send_command(CMD_START, Some(identifier), replay_start_payload)?;
+
+        *active_replay_id_guard = Some(identifier);
         Ok(identifier)
     }
 
+    // create_start_payload was already synchronous, no changes needed here
     fn create_start_payload(&self, recorder_type: RecorderType, include_file_output: bool, game_pid: i32) -> StartCommandPayload {
-        let config = &self.config;
-        
+         let config = &self.config;
+
         // Create encoder settings
         let mut encoder_settings = HashMap::new();
         encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
-    
+
         // Create video settings
         let video_settings = VideoSettings {
             video_encoder: VideoEncoderSettings {
@@ -178,7 +196,7 @@ impl Recorder {
             output_height: Some(config.resolution.1),
             ..Default::default()
         };
-    
+
         // Create audio settings
         let audio_settings = AudioSettings {
             sample_rate: Some(config.sample_rate),
@@ -186,7 +204,7 @@ impl Recorder {
             input_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
             ..Default::default()
         };
-    
+
         // Create scene settings
         let sources = SceneSettings {
             game: Some(GameSourceSettings {
@@ -197,7 +215,7 @@ impl Recorder {
             }),
             ..Default::default()
         };
-        
+
         // Create replay settings if configured
         let replay_settings = if config.replay_buffer_seconds.is_some() {
             Some(ReplaySettings {
@@ -207,7 +225,7 @@ impl Recorder {
         } else {
             None
         };
-        
+
         // Create file output settings if requested
         let file_output = if include_file_output {
             Some(FileOutputSettings {
@@ -217,7 +235,7 @@ impl Recorder {
         } else {
             None
         };
-        
+
         // Construct and return the payload
         StartCommandPayload {
             recorder_type,
@@ -229,247 +247,283 @@ impl Recorder {
             ..Default::default()
         }
     }
-    
-    /// Saves the current replay buffer to the configured file
-    pub async fn save_replay_buffer(&self) -> Result<(), ObsError> {
-        let current_replay_id = { // Create a smaller scope for the lock guard
-            let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
-    
+
+    /// Saves the current replay buffer to the configured file (Synchronous).
+    /// Blocks while sending commands and potentially restarting the buffer.
+    pub fn save_replay_buffer(&self) -> Result<(), ObsError> {
+        let (current_replay_id, output_path, buffer_duration) = { // Scope for the lock
+            let mut active_replay_id_guard = self.active_replay_buffer_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
+
             if active_replay_id_guard.is_none() {
-                error!("Cannot save replay buffer: replay buffer is not active");
-                return Err(ObsError::NotRecording);
+                error!("(Sync) Cannot save replay buffer: replay buffer is not active");
+                return Err(ObsError::NotRecording); // Or a more specific error
             }
-    
+
             let id = *active_replay_id_guard.as_ref().unwrap();
-    
-            // Make sure we have an output path configured
-            let output_path = match &self.config.replay_buffer_output_file {
-                Some(path) => path.to_string_lossy().into_owned(),
-                None => {
-                    error!("Cannot save replay buffer: no output file configured");
-                    return Err(ObsError::ShouldNotHappen("No replay buffer output file configured".to_string()));
-                }
-            };
-    
-            // Get the buffer duration in milliseconds
-            let buffer_duration = match self.config.replay_buffer_seconds {
-                Some(seconds) => seconds * 1000, // Convert to milliseconds
-                None => {
-                    error!("Cannot save replay buffer: no buffer duration configured");
-                    return Err(ObsError::ShouldNotHappen("No replay buffer duration configured".to_string()));
-                }
-            };
-    
-            // Step 1: Send command to save the replay buffer contents
+
+            let path = self.config.replay_buffer_output_file.as_ref()
+                .ok_or_else(|| {
+                    error!("(Sync) Cannot save replay buffer: no output file configured");
+                    ObsError::ShouldNotHappen("No replay buffer output file configured".to_string())
+                })?
+                .to_string_lossy()
+                .into_owned();
+
+            let duration_ms = self.config.replay_buffer_seconds
+                .ok_or_else(|| {
+                    error!("(Sync) Cannot save replay buffer: no buffer duration configured");
+                    ObsError::ShouldNotHappen("No replay buffer duration configured".to_string())
+                })? * 1000;
+
+            // Step 1: Send command to save the replay buffer contents (synchronous)
             let save_id = generate_identifier();
             info!(
-                "Sending SAVE_REPLAY_BUFFER command (id: {}, duration: {}ms, path: {:?})",
-                save_id, buffer_duration, output_path
+                "(Sync) Sending SAVE_REPLAY_BUFFER command (id: {}, duration: {}ms, path: {:?})",
+                save_id, duration_ms, path
             );
             let save_payload = StartReplayCaptureCommandPayload {
-                head_duration: buffer_duration as i64,
-                path: output_path,
+                head_duration: duration_ms as i64,
+                path: path.clone(),
                 thumbnail_folder: None,
             };
             self.client
-                .send_command(CMD_START_REPLAY_CAPTURE, Some(save_id), save_payload)
-                .await?;
-    
-            // Step 2: Stop the current replay buffer
+                .send_command(CMD_START_REPLAY_CAPTURE, Some(save_id), save_payload)?;
+
+            // Step 2: Send STOP command for the *current* replay buffer (synchronous)
             info!(
-                "Sending STOP command for replay buffer (id: {}, type: {:?})",
+                "(Sync) Sending STOP command for replay buffer (id: {}, type: {:?})",
                 id, RecorderType::Replay
             );
             let stop_payload = StopCommandPayload {
                 recorder_type: RecorderType::Replay,
             };
             self.client
-                .send_command(CMD_STOP, Some(id), stop_payload)
-                .await?;
-    
-            // Clear the active replay buffer ID since we've stopped it
+                .send_command(CMD_STOP, Some(id), stop_payload)?;
+
+            // Clear the active ID *after* successfully sending stop command
             *active_replay_id_guard = None;
-    
-            // Return the ID we just stopped
-            id
-        }; // LOCK RELEASED
-    
-        // Step 3: Start a new replay buffer with a new identifier
-        info!("Attempting to start new replay buffer (after stopping id: {})...", current_replay_id);
-        match self.start_replay_buffer().await {
+
+            // Return values needed for step 3 outside the lock
+             (id, path, duration_ms)
+        }; // --- Lock Released Here ---
+
+        // Step 3: Start a new replay buffer (synchronous)
+        info!("(Sync) Attempting to start new replay buffer (after stopping id: {})...", current_replay_id);
+        match self.start_replay_buffer() { // This call is now synchronous
             Ok(new_replay_id) => {
-                info!("Successfully started new replay buffer with id: {}", new_replay_id);
+                info!("(Sync) Successfully started new replay buffer with id: {}", new_replay_id);
                 Ok(())
             }
             Err(e) => {
-                error!("Failed to start new replay buffer: {}", e);
+                error!("(Sync) Failed to start new replay buffer: {}", e);
+                // Consider if you need error recovery here.
+                // Should we try again? Is the recorder in a bad state?
                 Err(e)
             }
         }
     }
 
-    /// Stops a specific recording.
-    pub async fn stop_recording(&self) -> Result<(), ObsError> {
-        let mut active_id_guard = self.active_recording_id.lock().await;
-        let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
-    
-        // First stop the replay buffer if it's active
+    /// Stops the active recording and replay buffer (Synchronous).
+    /// Blocks while sending commands.
+    pub fn stop_recording(&self) -> Result<(), ObsError> {
+        let mut stop_error: Option<ObsError> = None; // Keep track of the first error
+
+         // --- Lock replay buffer ID first ---
+        let mut active_replay_id_guard = self.active_replay_buffer_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
         if let Some(replay_identifier) = *active_replay_id_guard {
             info!(
-                "Sending STOP command for replay buffer (id: {}, type: {:?})",
-                replay_identifier,
-                RecorderType::Replay
+                "(Sync) Sending STOP command for replay buffer (id: {}, type: {:?})",
+                replay_identifier, RecorderType::Replay
             );
-            
-            let replay_stop_payload = StopCommandPayload {
-                recorder_type: RecorderType::Replay,
-            };
-    
-            // Attempt to send the stop command for replay buffer
-            match self.client
-                .send_command(CMD_STOP, Some(replay_identifier), replay_stop_payload)
-                .await {
-                Ok(_) => {
-                    info!("Replay buffer stop command sent successfully for id: {}", replay_identifier);
-                    *active_replay_id_guard = None;
-                }
+            let replay_stop_payload = StopCommandPayload { recorder_type: RecorderType::Replay };
+
+            match self.client.send_command(CMD_STOP, Some(replay_identifier), replay_stop_payload) {
+                Ok(_) => info!("(Sync) Replay buffer stop command sent successfully for id: {}", replay_identifier),
                 Err(e) => {
-                    error!("Failed to send STOP command for replay buffer id {}: {}", replay_identifier, e);
-                    // We continue to stop the main recording even if stopping the replay buffer fails
-                    *active_replay_id_guard = None;
+                    error!("(Sync) Failed to send STOP command for replay buffer id {}: {}", replay_identifier, e);
+                    stop_error = Some(e); // Store the error, but continue
                 }
             }
+            // Clear the ID regardless of command success, as we intended to stop it.
+            *active_replay_id_guard = None;
         }
-    
-        // Then stop the main recording
+        drop(active_replay_id_guard); // Release replay lock before taking recording lock
+
+
+        // --- Lock recording ID ---
+        let mut active_id_guard = self.active_recording_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
         if let Some(identifier) = *active_id_guard {
             info!(
-                "Sending STOP command (id: {}, type: {:?})",
-                identifier,
-                RecorderType::Video
+                "(Sync) Sending STOP command for main recording (id: {}, type: {:?})",
+                identifier, RecorderType::Video
             );
-            let payload = StopCommandPayload {
-                recorder_type: RecorderType::Video,
-            };
-    
-            // Attempt to send the stop command
-            let result = self
-                .client
-                .send_command(CMD_STOP, Some(identifier), payload)
-                .await;
-    
-            // Regardless of whether the command succeeded (it might fail if OBS crashed),
-            // we clear the state because we *intended* to stop.
-            *active_id_guard = None;
-    
-            match result {
-                Ok(_) => {
-                    info!("Recording stop command sent successfully for id: {}", identifier);
-                    Ok(())
-                }
+            let payload = StopCommandPayload { recorder_type: RecorderType::Video };
+
+            match self.client.send_command(CMD_STOP, Some(identifier), payload) {
+                Ok(_) => info!("(Sync) Recording stop command sent successfully for id: {}", identifier),
                 Err(e) => {
-                    error!("Failed to send STOP command for id {}: {}", identifier, e);
-                    // Propagate the error
-                    Err(e)
+                    error!("(Sync) Failed to send STOP command for main recording id {}: {}", identifier, e);
+                    // Prioritize this error if we didn't have one from the replay buffer
+                    if stop_error.is_none() {
+                        stop_error = Some(e);
+                    }
                 }
             }
+            // Clear the ID regardless of command success.
+            *active_id_guard = None;
+
+            // Return the stored error, if any
+            if let Some(err) = stop_error {
+                Err(err)
+            } else {
+                Ok(())
+            }
         } else {
-            warn!("Stop recording called, but no recording is active.");
-            
-            // It's debatable whether this should be an error or not.
-            // Let's make it an error for clarity.
-            Err(ObsError::NotRecording)
+             warn!("(Sync) Stop recording called, but no main recording is active.");
+             // If there was an error stopping the replay buffer, return that.
+             // Otherwise, return NotRecording error.
+             stop_error.map_or(Err(ObsError::NotRecording), Err)
         }
         // Locks are released when guards go out of scope
     }
 
-    /// Shuts down the ascent-obs process and associated communication.
-    /// Consumes the `Recorder` instance.
-    pub async fn shutdown(self) -> Result<(), ObsError> {
-        info!("Shutting down Recorder...");
-        
-        // Send shutdown command immediately
-        info!("Sending SHUTDOWN command to ascent-obs process");
-        
-        // Send the command and check the result, but continue with shutdown regardless
-        match self.client.send_simple_command(CMD_SHUTDOWN, None).await {
-            Ok(_) => info!("Successfully sent shutdown command to ascent-obs process"),
-            Err(e) => warn!("Failed to send shutdown command to ascent-obs process: {}", e),
+
+    /// Shuts down the ascent-obs process and associated communication (Synchronous).
+    /// Consumes the `Recorder` instance. Blocks until shutdown is complete.
+    pub fn shutdown(self) -> Result<(), ObsError> {
+        info!("(Sync) Shutting down Recorder...");
+
+        // Send shutdown command (synchronous)
+        info!("(Sync) Sending SHUTDOWN command to ascent-obs process");
+        match self.client.send_simple_command(CMD_SHUTDOWN, None) {
+            Ok(_) => info!("(Sync) Successfully sent shutdown command to ascent-obs process"),
+            Err(e) => warn!("(Sync) Failed to send shutdown command to ascent-obs process: {}", e),
+            // Continue shutdown even if sending command fails
         }
-        
-        // Always shutdown the client communication channels and wait for process exit
-        self.client.shutdown().await
+
+        // Shutdown the client (synchronous, waits for process exit and threads)
+        let client_shutdown_result = self.client.shutdown(); // This now blocks
+
+        // Note: The event drain thread should stop automatically when the
+        // ObsClient::shutdown() call closes the underlying stdout pipe, which
+        // causes the mpsc Receiver to disconnect, ending the recv() loop.
+        // ObsClient::shutdown already waits for its threads.
+        // We don't explicitly join _event_drain_task here as ObsClient handles cleanup.
+
+        client_shutdown_result // Return the result from ObsClient::shutdown
     }
 }
 
-/// Queries machine information (encoders, audio devices) without creating a Recorder.
-/// 
+/// Queries machine information (encoders, audio devices) without creating a Recorder (Synchronous).
+/// Blocks while starting/stopping the temporary client and waiting for the response.
+///
 /// # Arguments
 /// * `ascent_obs_path` - Path to the ascent-obs.exe executable.
 ///
 /// # Returns
-/// Returns the command identifier. The caller will need to implement their own
-/// way of receiving events if they need the response.
-pub async fn query_machine_info(
+/// The machine information payload or an error.
+pub fn query_machine_info(
     ascent_obs_path: impl Into<PathBuf>,
 ) -> Result<QueryMachineInfoEventPayload, ObsError> {
     let path = ascent_obs_path.into();
-    
-    // Start a temporary client with a small buffer
-    let (client, mut event_receiver) = ObsClient::start(path, None, 32).await?;
-    
-    // Send the query command
+    info!("(Sync) Querying machine info from: {:?}", path);
+
+    // Start a temporary synchronous client
+    let (client, event_receiver) = ObsClient::start(path, None, 32)?; // Synchronous start
+
+    // Send the query command (synchronous)
     let identifier = generate_identifier();
-    info!("Sending QUERY_MACHINE_INFO command (id: {})", identifier);
-    client.send_simple_command(CMD_QUERY_MACHINE_INFO, Some(identifier)).await?;
-    
-    // Wait for the response with the matching identifier
-    let result = tokio::time::timeout(
-        tokio::time::Duration::from_secs(5), // Set a reasonable timeout
-        async {
-            while let Some(event_result) = event_receiver.recv().await {
-                match event_result {
-                    Ok(notification) => {
-                        debug!("Received event type: {}, identifier: {:?}", notification.event, notification.identifier);
-                        // Check if this is our response
-                        // TODO: ascent-obs.exe does NOT return identifier for query machine info
-                        //if notification.event == EVT_QUERY_MACHINE_INFO && notification.identifier == Some(identifier) {
-                        if notification.event == EVT_QUERY_MACHINE_INFO {
-                            // Deserialize the payload
-                            if let Ok(Some(payload)) = notification.deserialize_payload::<QueryMachineInfoEventPayload>() {
-                                return Ok(payload);
-                            } else {
-                                return Err(ObsError::Deserialization("Failed to deserialize query response".into()));
-                            }
-                        } else if notification.event == EVT_ERR && 
-                                  notification.identifier == Some(identifier) {
-                            // Error response for our request
-                            if let Ok(Some(error_payload)) = notification.deserialize_payload::<ErrorEventPayload>() {
-                                return Err(ObsError::PipeError(format!(
-                                    "Error response: Code {}, Description: {:?}", 
-                                    error_payload.code, 
-                                    error_payload.desc
-                                )));
-                            } else {
-                                return Err(ObsError::PipeError("Error response with invalid payload".into()));
-                            }
-                        }
-                        // Not our response, continue waiting
-                    },
-                    Err(e) => return Err(e),
-                }
+    info!("(Sync) Sending QUERY_MACHINE_INFO command (id: {})", identifier);
+    if let Err(e) = client.send_simple_command(CMD_QUERY_MACHINE_INFO, Some(identifier)) {
+        error!("(Sync) Failed to send query command: {}", e);
+        // Attempt shutdown even if send failed
+        let _ = client.shutdown();
+        return Err(e);
+    }
+
+    // Wait for the response with a timeout using mpsc::recv_timeout
+    let timeout_duration = Duration::from_secs(5);
+    let mut response_payload: Option<QueryMachineInfoEventPayload> = None;
+    let mut response_error: Option<ObsError> = None;
+
+    info!("(Sync) Waiting for response (max {} seconds)...", timeout_duration.as_secs());
+    loop {
+        match event_receiver.recv_timeout(timeout_duration) {
+            Ok(Ok(notification)) => { // Successfully received an EventNotification
+                debug!("(Sync) Query received event type: {}, identifier: {:?}", notification.event, notification.identifier);
+                // TODO: Confirm if ascent-obs *does* return identifier for this event now.
+                // Assuming it *might* not, we primarily check the event type.
+                 if notification.event == EVT_QUERY_MACHINE_INFO {
+                     match notification.deserialize_payload::<QueryMachineInfoEventPayload>() {
+                         Ok(Some(payload)) => {
+                             info!("(Sync) Received valid QUERY_MACHINE_INFO response.");
+                             response_payload = Some(payload);
+                             break; // Got our response
+                         }
+                         Ok(None) => {
+                             warn!("(Sync) Received QUERY_MACHINE_INFO event with null/empty payload.");
+                             // Continue waiting or treat as error? Let's treat as error.
+                              response_error = Some(ObsError::Deserialization("Query response payload was empty".into()));
+                              break;
+                         }
+                         Err(e) => {
+                             error!("(Sync) Failed to deserialize QUERY_MACHINE_INFO payload: {}", e);
+                             response_error = Some(ObsError::Deserialization(format!("Failed to deserialize query response: {}", e)));
+                             break; // Deserialization error
+                         }
+                     }
+                 } else if notification.event == EVT_ERR && notification.identifier == Some(identifier) {
+                     // Received a specific error response for our command ID
+                     match notification.deserialize_payload::<ErrorEventPayload>() {
+                         Ok(Some(error_payload)) => {
+                             error!("(Sync) Received error response for query (Code {}): {:?}", error_payload.code, error_payload.desc);
+                             response_error = Some(ObsError::PipeError(format!(
+                                 "Error response: Code {}, Description: {:?}",
+                                 error_payload.code,
+                                 error_payload.desc
+                             )));
+                         }
+                         _ => {
+                              error!("(Sync) Received error response with invalid payload for query.");
+                              response_error = Some(ObsError::PipeError("Error response with invalid payload".into()));
+                         }
+                     }
+                      break; // Got an error response
+                 }
+                 // Ignore other events
             }
-            // Channel closed without receiving our response
-            Err(ObsError::PipeError("Event channel closed before receiving response".into()))
+            Ok(Err(e)) => { // Received an ObsError from the reader thread
+                 error!("(Sync) Query received error from event channel: {}", e);
+                 response_error = Some(e);
+                 break; // Error from the underlying communication
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                error!("(Sync) Timed out waiting for query response after {} seconds.", timeout_duration.as_secs());
+                response_error = Some(ObsError::PipeError("Timed out waiting for query response".into()));
+                break; // Timeout
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                 error!("(Sync) Event channel disconnected while waiting for query response.");
+                 response_error = Some(ObsError::PipeError("Event channel closed before receiving response".into()));
+                 break; // Channel closed prematurely
+            }
         }
-    ).await;
-    
-    // Shutdown the client regardless of the outcome
-    let _ = client.shutdown().await;
-    
-    // Handle the timeout case and return the result
-    match result {
-        Ok(result) => result,
-        Err(_) => Err(ObsError::PipeError("Timed out waiting for query response".into())),
+    }
+
+    // Shutdown the client (synchronous)
+    info!("(Sync) Shutting down temporary client used for query...");
+    if let Err(e) = client.shutdown() {
+         warn!("(Sync) Error during temporary client shutdown: {}", e);
+         // Prioritize the response error over the shutdown error, unless no response error occurred.
+         if response_error.is_none() {
+             response_error = Some(e);
+         }
+    }
+
+    // Return the result
+    match (response_payload, response_error) {
+        (Some(payload), None) => Ok(payload),
+        (_, Some(err)) => Err(err),
+        (None, None) => Err(ObsError::InternalError("Query finished without payload or error".into())), // Should not happen given the loop logic
     }
 }

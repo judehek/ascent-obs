@@ -8,7 +8,7 @@ use tokio;
 #[tokio::main]
 async fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init(); // Default to info level
-    if let Err(e) = run_recorder().await {
+    if let Err(e) = run_recorder() {
         eprintln!("Recorder encountered an error: {}", e);
         // Consider adding specific error handling based on ObsError variants
         // if let ObsError::Configuration(msg) = e {
@@ -18,19 +18,19 @@ async fn main() {
 }
 
 const ASCENT_OBS_PATH: &str =
-    "/Users/judeb/AppData/Local/Ascent/OBS_Organized_Build/bin/64bit/ascent-obs.exe";
+    "/Users/judeb/AppData/Local/Ascent/libraries/ascent-obs/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 35352; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 32780; // !! Make sure this PID is correct when you run! !!
 
-async fn run_recorder() -> Result<(), ObsError> {
+fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
 
     println!("Recorder process started.");
 
     // --- Example: Query Machine Info ---
     // Note: Our new API just returns an ID but we can't actually listen for the response
-    match ascent_obs_comm::query_machine_info(ASCENT_OBS_PATH).await {
+    match ascent_obs_comm::query_machine_info(ASCENT_OBS_PATH) {
     Ok(machine_info) => {
         println!("\nQuery Machine Info completed successfully!");
         
@@ -59,7 +59,7 @@ async fn run_recorder() -> Result<(), ObsError> {
     for i in (1..=5).rev() {
         print!("\rStarting recording in {} seconds...", i);
         io::stdout().flush().unwrap();
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
     println!("\rSending start recording command...          "); // Clear countdown line
 
@@ -75,33 +75,33 @@ async fn run_recorder() -> Result<(), ObsError> {
         .with_replay_buffer_output_file(Some(REPLAY_FILE_PATH))
         ;
         // --- Create the recorder directly with new() ---
-    let recorder = Recorder::new(ASCENT_OBS_PATH, config, TARGET_PID, None).await?;
+    let recorder = Recorder::new(ASCENT_OBS_PATH, config, TARGET_PID, None)?;
     
-    let recording_id = recorder.start_recording().await?;
+    let recording_id = recorder.start_recording()?;
     println!("Start recording command sent (id: {})", recording_id);
 
     // Let it run
     println!("Waiting 30 seconds for recording...");
-    tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+    std::thread::sleep(std::time::Duration::from_secs(30));
 
     println!("saving replay buffer...");
-    recorder.save_replay_buffer().await?;
+    recorder.save_replay_buffer()?;
     println!("saved replay buffer");
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    std::thread::sleep(std::time::Duration::from_secs(10));
 
     // --- Stop the recording ---
     println!("Sending Stop command (id: {})...", recording_id);
-    recorder.stop_recording().await?;
+    recorder.stop_recording()?;
     println!("Stop command sent (id: {})", recording_id);
 
     // Allow time for stop event processing 
     // (though we aren't receiving events in this version)
-    tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
+    std::thread::sleep(std::time::Duration::from_secs(1));
 
     // --- Shutdown ---
     println!("Shutting down recorder...");
-    recorder.shutdown().await?; // Consume the recorder instance
+    recorder.shutdown()?; // Consume the recorder instance
     println!("Recorder shutdown message sent.");
 
     // No need to wait for event listener since we're not handling events

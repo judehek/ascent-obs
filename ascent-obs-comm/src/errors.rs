@@ -43,4 +43,7 @@ pub enum ObsError {
 
     #[error("Critical error, this should never happen: {0}")]
     ShouldNotHappen(String),
+
+    #[error("Internal error occured: {0}")]
+    InternalError(String),
 }

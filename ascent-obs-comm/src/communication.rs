@@ -1,59 +1,66 @@
-use crate::types::{CommandRequest, SimpleCommandRequest, EventNotification}; // Assuming EventNotification is in types
+use crate::types::{CommandRequest, SimpleCommandRequest, EventNotification};
 use crate::errors::ObsError;
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Deserializer;
+use std::io::{BufRead, BufReader, Read, Write}; // Use std::io
 use std::path::Path;
-use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStdin, ChildStdout, Command as TokioCommand};
-use tokio::sync::{mpsc, oneshot};
-use tokio::task::JoinHandle;
+use std::process::{Child, ChildStdin, ChildStdout, ChildStderr, Command, Stdio}; // Use std::process
+use std::sync::mpsc; // Use std::sync::mpsc
+use std::thread::{self, JoinHandle}; // Use std::thread
+use std::time::Duration;
 
-/// Handles communication with a running ascent-obs.exe process.
+/// Handles communication with a running ascent-obs.exe process (Synchronous Version).
+///
+/// WARNING: Methods on this client (start, send*, shutdown) are blocking.
+/// Ensure this client is managed appropriately, potentially in its own thread,
+/// to avoid blocking critical parts of your application (like a UI thread).
 #[derive(Debug)]
 pub struct ObsClient {
     child: Child,
     writer_handle: JoinHandle<Result<(), ObsError>>,
     reader_handle: JoinHandle<()>,
     stderr_handle: JoinHandle<()>,
-    command_sender: mpsc::Sender<String>,
-    _shutdown_signal_sender: oneshot::Sender<()>,
+    command_sender: mpsc::SyncSender<String>, // Use std mpsc Sender
+    // No explicit shutdown signal needed; dropping command_sender signals the writer.
 }
 
 // Public interface
 impl ObsClient {
-    /// Starts the ascent-obs.exe process and establishes communication channels.
-    pub async fn start(
+    /// Starts the ascent-obs.exe process and establishes communication channels (Synchronous).
+    ///
+    /// This function blocks until the process is started and threads are spawned.
+    pub fn start(
         ascent_obs_path: impl AsRef<Path>,
         channel_id: Option<&str>,
-        buffer_size: usize,
-    ) -> Result<(Self, mpsc::Receiver<Result<EventNotification, ObsError>>), ObsError>
+        buffer_size: usize, // Buffer size for the command channel
+    ) -> Result<(Self, mpsc::Receiver<Result<EventNotification, ObsError>>), ObsError> // Use std mpsc Receiver
     {
         let ascent_obs_path_str = ascent_obs_path
             .as_ref()
             .to_str()
             .ok_or(ObsError::InvalidPath)?;
 
-        info!("Starting ascent-obs process: {}", ascent_obs_path_str);
+        info!("(Sync) Starting ascent-obs process: {}", ascent_obs_path_str);
 
-        let mut command = TokioCommand::new(ascent_obs_path_str);
+        let mut command = Command::new(ascent_obs_path_str); // Use std::process::Command
         command
-            .kill_on_drop(true)
+            // kill_on_drop is implicit for std::process::Child
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
         if let Some(id) = channel_id {
-             warn!("Channel ID provided ('{}'), but Rust client primarily uses stdio. Ensure ascent-obs handles this.", id);
+             warn!("(Sync) Channel ID provided ('{}'), but Rust client primarily uses stdio. Ensure ascent-obs handles this.", id);
              command.arg("--channel").arg(id);
         } else {
-            info!("Using stdio communication mode.");
+            info!("(Sync) Using stdio communication mode.");
         }
 
         let mut child = command.spawn().map_err(ObsError::ProcessStart)?;
-        info!("ascent-obs process started (PID: {:?})", child.id());
+        info!("(Sync) ascent-obs process started (PID: {:?})", child.id());
 
+        // take stdin/out/err (synchronous)
         let stdin = child.stdin.take().ok_or(ObsError::PipeError(
             "Failed to take stdin".to_string(),
         ))?;
@@ -64,16 +71,15 @@ impl ObsClient {
             "Failed to take stderr".to_string(),
         ))?;
 
-        let (command_sender, command_receiver) = mpsc::channel::<String>(buffer_size);
-        // CORRECTED TYPE for the channel
+        // Create standard mpsc channels
+        let (command_sender, command_receiver) = mpsc::sync_channel::<String>(buffer_size); // Use sync_channel for bounded buffer
         let (event_sender, event_receiver) =
-            mpsc::channel::<Result<EventNotification, ObsError>>(buffer_size);
-        let (shutdown_sender, shutdown_receiver) = oneshot::channel::<()>();
+            mpsc::sync_channel::<Result<EventNotification, ObsError>>(buffer_size); // Use sync_channel
 
-        let writer_handle = spawn_writer_task(stdin, command_receiver, shutdown_receiver);
-        // Pass the corrected sender type
-        let reader_handle = spawn_reader_task(stdout, event_sender.clone());
-        let stderr_handle = spawn_stderr_task(stderr);
+        // Spawn standard OS threads
+        let writer_handle = spawn_writer_thread(stdin, command_receiver);
+        let reader_handle = spawn_reader_thread(stdout, event_sender.clone());
+        let stderr_handle = spawn_stderr_thread(stderr);
 
         Ok((
             Self {
@@ -82,14 +88,15 @@ impl ObsClient {
                 reader_handle,
                 stderr_handle,
                 command_sender,
-                _shutdown_signal_sender: shutdown_sender,
+                // No shutdown sender field needed
             },
-            event_receiver,
+            event_receiver, // Return the standard mpsc receiver
         ))
     }
 
-    /// Sends a command without a specific payload.
-    pub async fn send_simple_command(
+    /// Sends a command without a specific payload (Synchronous).
+    /// Blocks if the command channel buffer is full.
+    pub fn send_simple_command(
         &self,
         cmd_code: i32,
         identifier: Option<i32>,
@@ -99,11 +106,12 @@ impl ObsClient {
             identifier,
         };
         let json_string = serde_json::to_string(&command).map_err(ObsError::Serialization)?;
-        self.send_json_string(json_string).await
+        self.send_json_string(json_string)
     }
 
-    /// Sends a command with a specific payload structure.
-    pub async fn send_command<T: Serialize + std::fmt::Debug>( // Added Debug constraint for logging
+    /// Sends a command with a specific payload structure (Synchronous).
+    /// Blocks if the command channel buffer is full.
+    pub fn send_command<T: Serialize + std::fmt::Debug>(
         &self,
         cmd_code: i32,
         identifier: Option<i32>,
@@ -114,136 +122,134 @@ impl ObsClient {
             identifier,
             payload,
         };
-        // Log the command before serialization if needed (requires Debug on T)
-        debug!("Preparing to send command: {:?}", command);
+        debug!("(Sync) Preparing to send command: {:?}", command);
         let json_string = serde_json::to_string(&command).map_err(ObsError::Serialization)?;
-        info!("Preparing to send command: {:?}", json_string);
-        self.send_json_string(json_string).await
+        info!("(Sync) Preparing to send command: {:?}", json_string);
+        self.send_json_string(json_string)
     }
 
-    /// Sends a pre-serialized JSON string command.
-    async fn send_json_string(&self, json_string: String) -> Result<(), ObsError> {
-        debug!("Sending command JSON: {}", json_string);
+    /// Sends a pre-serialized JSON string command (Synchronous).
+    /// Blocks if the command channel buffer is full.
+    fn send_json_string(&self, json_string: String) -> Result<(), ObsError> {
+        debug!("(Sync) Sending command JSON: {}", json_string);
+        // send() might block if the buffer is full
         self.command_sender
             .send(json_string)
-            .await
-            .map_err(|e| ObsError::CommandSend(format!("Command channel closed: {}", e)))?; // Include error detail
+            .map_err(|e| ObsError::CommandSend(format!("(Sync) Command channel closed or error: {}", e)))?;
         Ok(())
     }
 
-    /// Shuts down the ascent-obs process and associated communication tasks gracefully.
-    pub async fn shutdown(mut self) -> Result<(), ObsError> {
-        info!("Shutting down ObsClient (PID: {:?})", self.child.id());
+    /// Shuts down the ascent-obs process and associated communication threads gracefully (Synchronous).
+    ///
+    /// This function BLOCKS until all threads have joined and the process has exited.
+    pub fn shutdown(mut self) -> Result<(), ObsError> {
+        info!("(Sync) Shutting down ObsClient (PID: {:?})", self.child.id());
 
-        drop(self._shutdown_signal_sender);
+        // Drop the command sender. This signals the writer thread to exit
+        // because command_receiver.recv() will return Err.
         drop(self.command_sender);
 
-        match self.writer_handle.await {
-            Ok(Ok(())) => info!("Writer task finished gracefully."),
-            Ok(Err(e)) => error!("Writer task finished with error: {}", e),
-            Err(e) => error!("Failed to join writer task: {}", e),
+        // Wait for the writer thread to finish. This blocks.
+        match self.writer_handle.join() {
+            Ok(Ok(())) => info!("(Sync) Writer thread finished gracefully."),
+            Ok(Err(e)) => error!("(Sync) Writer thread finished with error: {}", e),
+            Err(panic_payload) => error!("(Sync) Writer thread panicked: {:?}", panic_payload), // Join returns Err on panic
         }
 
-        info!("Attempting to terminate ascent-obs process...");
-        if let Err(e) = self.child.kill().await {
-             error!("Failed to kill ascent-obs process: {}. It might have already exited.", e);
+        // Attempt to terminate the process (optional, writer closing stdin might be enough)
+        info!("(Sync) Attempting to terminate ascent-obs process...");
+        if let Err(e) = self.child.kill() {
+             // Log error, but proceed. Maybe it already exited.
+             error!("(Sync) Failed to kill ascent-obs process: {}. It might have already exited.", e);
         } else {
-             info!("Kill signal sent to ascent-obs process.");
+             info!("(Sync) Kill signal sent to ascent-obs process.");
         }
 
-        match self.child.wait().await {
-            Ok(status) => info!("ascent-obs process exited with status: {}", status),
-            Err(e) => error!("Error waiting for ascent-obs process exit: {}", e),
+        // Wait for the process to exit. This blocks.
+        match self.child.wait() {
+            Ok(status) => info!("(Sync) ascent-obs process exited with status: {}", status),
+            Err(e) => error!("(Sync) Error waiting for ascent-obs process exit: {}", e),
         }
 
-        if let Err(e) = self.reader_handle.await {
-            error!("Failed to join reader task: {}", e);
+        // Wait for the reader and stderr threads to finish. They should exit
+        // when the process stdout/stderr streams are closed after process termination.
+        // These join calls block.
+        if let Err(panic_payload) = self.reader_handle.join() {
+            error!("(Sync) Reader thread panicked: {:?}", panic_payload);
         } else {
-             info!("Reader task finished.");
+             info!("(Sync) Reader thread finished.");
         }
-        if let Err(e) = self.stderr_handle.await {
-            error!("Failed to join stderr task: {}", e);
+        if let Err(panic_payload) = self.stderr_handle.join() {
+            error!("(Sync) Stderr thread panicked: {:?}", panic_payload);
         } else {
-             info!("Stderr task finished.");
+             info!("(Sync) Stderr thread finished.");
         }
 
-        info!("ObsClient shutdown complete.");
+        info!("(Sync) ObsClient shutdown complete.");
         Ok(())
     }
 }
 
-// --- Background Task Functions ---
+// --- Background Thread Functions ---
 
-fn spawn_writer_task(
+fn spawn_writer_thread(
     mut stdin: ChildStdin,
-    mut command_receiver: mpsc::Receiver<String>,
-    mut shutdown_receiver: oneshot::Receiver<()>,
-) -> JoinHandle<Result<(), ObsError>> {
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                biased; // Prioritize shutdown check
-
-                _ = &mut shutdown_receiver => {
-                    info!("Writer task received shutdown signal.");
-                    drop(stdin); // Close stdin gracefully
-                    return Ok(());
-                }
-                command_opt = command_receiver.recv() => {
-                    match command_opt {
-                        Some(mut json_string) => {
-                            if !json_string.ends_with('\n') {
-                                json_string.push('\n');
-                            }
-                            debug!("Writer task sending: {}", json_string.trim_end());
-                            if let Err(e) = stdin.write_all(json_string.as_bytes()).await {
-                                error!("Writer task failed to write to stdin: {}", e);
-                                drop(stdin);
-                                return Err(ObsError::PipeError(format!("Write error: {}", e)));
-                            }
-                            if let Err(e) = stdin.flush().await {
-                                 error!("Writer task failed to flush stdin: {}", e);
-                                 drop(stdin);
-                                 return Err(ObsError::PipeError(format!("Flush error: {}", e)));
-                            }
-
-                            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                            debug!("Writer task completed 1-second sleep after send");
-                        }
-                        None => {
-                            info!("Writer task command channel closed. Exiting.");
-                            drop(stdin);
-                            return Ok(());
-                        }
-                    }
-                }
+    command_receiver: mpsc::Receiver<String>, // Standard mpsc Receiver
+) -> JoinHandle<Result<(), ObsError>> { // Standard JoinHandle
+    thread::spawn(move || { // Use std::thread::spawn
+        info!("(Sync) Writer thread started.");
+        // Loop while the channel is open. recv() blocks until a message arrives or the channel closes.
+        while let Ok(mut json_string) = command_receiver.recv() {
+            if !json_string.ends_with('\n') {
+                json_string.push('\n');
             }
+            debug!("(Sync) Writer thread sending: {}", json_string.trim_end());
+
+            // write_all and flush are blocking operations
+            if let Err(e) = stdin.write_all(json_string.as_bytes()) {
+                error!("(Sync) Writer thread failed to write to stdin: {}", e);
+                // Don't drop stdin here explicitly, let the thread exit naturally
+                return Err(ObsError::PipeError(format!("Write error: {}", e)));
+            }
+             if let Err(e) = stdin.flush() {
+                 error!("(Sync) Writer thread failed to flush stdin: {}", e);
+                 return Err(ObsError::PipeError(format!("Flush error: {}", e)));
+             }
+
+            // Synchronous sleep
+            thread::sleep(Duration::from_secs(1));
+            debug!("(Sync) Writer thread completed 1-second sleep after send");
         }
+
+        // recv() returned Err, meaning the sender was dropped (shutdown signal)
+        info!("(Sync) Writer thread command channel closed. Exiting.");
+        // Dropping stdin happens implicitly when the thread scope ends
+        Ok(())
     })
 }
 
-/// Task to read bytes from stdout, manage a buffer, parse JSON stream using iterator, and send events.
-fn spawn_reader_task(
+fn spawn_reader_thread(
     stdout: ChildStdout,
-    event_sender: mpsc::Sender<Result<EventNotification, ObsError>>,
-) -> JoinHandle<()> {
-    tokio::spawn(async move {
+    event_sender: mpsc::SyncSender<Result<EventNotification, ObsError>>, // Standard mpsc Sender
+) -> JoinHandle<()> { // Standard JoinHandle
+    thread::spawn(move || { // Use std::thread::spawn
+        info!("(Sync) Reader thread started.");
+        // Use std::io::BufReader
         let mut reader = BufReader::new(stdout);
         let mut read_buf = vec![0u8; 4096]; // Buffer for reading directly from stdout
         let mut process_buf = Vec::with_capacity(8192); // Buffer to accumulate data for parsing
 
         loop {
-            // Read data from stdout into read_buf
-            match reader.read(&mut read_buf).await {
+            // read() is a blocking call from std::io::Read
+            match reader.read(&mut read_buf) {
                 Ok(0) => {
-                    info!("Reader task reached EOF on stdout. Exiting.");
-                    if !process_buf.is_empty() {
+                    info!("(Sync) Reader thread reached EOF on stdout. Exiting.");
+                     if !process_buf.is_empty() {
                         warn!(
-                            "Reader task exited with unprocessed data in buffer ({} bytes): '{}'",
+                            "(Sync) Reader thread exited with unprocessed data in buffer ({} bytes): '{}'",
                             process_buf.len(),
-                            String::from_utf8_lossy(&process_buf).chars().take(100).collect::<String>() // Log start of remaining data
+                            String::from_utf8_lossy(&process_buf).chars().take(100).collect::<String>()
                         );
-                        // Consider one last parse attempt on process_buf here if necessary
                     }
                     break; // End of stream
                 }
@@ -252,131 +258,109 @@ fn spawn_reader_task(
                     process_buf.extend_from_slice(&read_buf[..n]);
                 }
                 Err(e) => {
-                    error!("Reader task failed to read from stdout: {}", e);
+                    error!("(Sync) Reader thread failed to read from stdout: {}", e);
                     let err_res = Err(ObsError::PipeError(format!("Read error: {}", e)));
-                    let _ = event_sender.send(err_res).await; // Ignore send error if stopping
+                    // Try sending the error, ignore if channel is closed
+                    let _ = event_sender.send(err_res);
                     break; // Exit on IO read error
                 }
             }
 
             // --- Process the accumulated buffer ---
             let mut bytes_consumed_in_buffer = 0;
-
-            // Create a Deserializer for the current processing buffer
-            // Loop as long as we can successfully deserialize items or until an error occurs
             loop {
-                 // Work on a slice starting after the already consumed bytes
                 let current_slice = &process_buf[bytes_consumed_in_buffer..];
-                if current_slice.is_empty() {
+                 if current_slice.is_empty() {
                     break; // Nothing more to process in the buffer for now
                 }
 
-                // Create the Deserializer from the slice
                 let de = Deserializer::from_slice(current_slice);
-                // Get the streaming iterator
-                let mut iter = de.into_iter::<EventNotification>();
+                let mut iter = de.into_iter::<EventNotification>(); // serde_json is sync
 
                 match iter.next() {
                     Some(Ok(event)) => {
-                        // Successfully parsed an event
-                        debug!("Parsed event: {:?}", event);
-                        // Update total consumed bytes based on the iterator's offset AFTER success
                         bytes_consumed_in_buffer += iter.byte_offset();
-
-                        // Send the event
-                        debug!("Reader task successfully parsed event: {:?}", event);
-                        if event_sender.send(Ok(event)).await.is_err() {
-                            warn!("Reader task failed to send event: receiver dropped.");
-                            return; // Exit task if receiver is gone
+                        debug!("(Sync) Reader thread successfully parsed event: {:?}", event);
+                        // send() can block if the event channel buffer is full
+                        if event_sender.send(Ok(event)).is_err() {
+                            warn!("(Sync) Reader thread failed to send event: receiver dropped.");
+                            // Exit thread if we can't send events anymore
+                            return;
                         }
-                        debug!("Reader task successfully sent event to MPSC channel");
-                        // Continue inner loop to try and parse the *next* object from the remaining buffer slice
+                        debug!("(Sync) Reader task successfully sent event to MPSC channel");
                     }
                     Some(Err(e)) => {
-                        // Deserialization failed for an item in the stream
-                        let error_offset = iter.byte_offset(); // Offset *within the current_slice* where error occurred
-
+                        let error_offset = iter.byte_offset();
                         if e.is_eof() {
-                            // EOF error means the slice ended mid-object. This is expected.
-                            // We need more data. Break the inner loop.
-                            // Don't increment bytes_consumed_in_buffer for EOF.
-                            debug!("Parser needs more data (EOF encountered).");
+                            // Incomplete JSON object in buffer, need more data
+                             debug!("(Sync) Parser needs more data (EOF encountered).");
                             break; // Break inner loop to read more data
                         } else {
-                            // Syntax or Data error. Log it.
-                            error!(
-                                "JSON parse error: {} (at offset {} within current parse attempt, absolute {}) Context: '{}'",
+                            // Syntax or other parse error
+                             error!(
+                                "(Sync) JSON parse error: {} (at offset {} within current parse attempt, absolute {}) Context: '{}'",
                                 e,
                                 error_offset,
-                                bytes_consumed_in_buffer + error_offset, // Approximate absolute offset
+                                bytes_consumed_in_buffer + error_offset,
                                 String::from_utf8_lossy(current_slice).chars().take(80).collect::<String>()
                             );
-
-                            // Send the error notification
                             let err_res = Err(ObsError::Deserialization(format!("JSON Parse Error: {}", e)));
-                            if event_sender.send(err_res).await.is_err() {
-                                warn!("Reader task failed to send parsing error: receiver dropped.");
-                                return; // Exit task
+                             // Try sending the error, ignore if channel is closed
+                            if event_sender.send(err_res).is_err() {
+                                warn!("(Sync) Reader thread failed to send parsing error: receiver dropped.");
+                                return; // Exit thread
                             }
-
-                            // Consume the buffer *up to the error* to avoid retrying the bad data.
-                            // This might discard subsequent valid objects if the error was recoverable,
-                            // but it's safer than getting stuck in a loop on bad data.
+                            // Consume data up to the error point
                             bytes_consumed_in_buffer += error_offset;
-
-                            // Break the inner loop; we'll drain the consumed part and then read more data.
-                            break;
+                            break; // Break inner loop, try reading more after draining
                         }
                     }
-                    None => {
-                        // The iterator finished *cleanly* for the current slice (no more items found, no EOF error)
-                        // This usually means the buffer ended exactly after a complete object or contained only whitespace.
-                        // Consume the entire slice we tried to process.
+                     None => {
+                        // Iter finished cleanly for this slice
                         bytes_consumed_in_buffer = process_buf.len();
-                        break; // Break inner loop, nothing more to parse in this buffer load
+                        break; // Break inner loop
                     }
                 }
-            } // End inner loop (processing current buffer content)
+            } // End inner processing loop
 
-            // After trying to process the buffer, drain the consumed part
+            // Drain consumed bytes
             if bytes_consumed_in_buffer > 0 {
                 debug!("Draining {} bytes from process buffer", bytes_consumed_in_buffer);
                 process_buf.drain(..bytes_consumed_in_buffer);
             }
-            // Reset for next pass (though drain does this implicitly)
-            // bytes_consumed_in_buffer = 0;
+        } // End outer read loop
 
-        } // End outer loop (reading from stdout)
-        info!("Reader task finished.");
+        info!("(Sync) Reader thread finished.");
+        // Sender is dropped implicitly when the thread scope ends
     })
 }
 
-
-fn spawn_stderr_task(stderr: tokio::process::ChildStderr) -> JoinHandle<()> {
-   // Stderr task remains the same
-    tokio::spawn(async move {
+fn spawn_stderr_thread(stderr: ChildStderr) -> JoinHandle<()> { // Standard JoinHandle
+    thread::spawn(move || { // Use std::thread::spawn
+        // Use std::io::BufReader
         let mut reader = BufReader::new(stderr);
         let mut line_buf = String::new();
-        info!("Stderr logging task started.");
+        info!("(Sync) Stderr logging thread started.");
         loop {
             line_buf.clear();
-            match reader.read_line(&mut line_buf).await {
+            // read_line() is a blocking call from std::io::BufRead
+            match reader.read_line(&mut line_buf) {
                 Ok(0) => {
-                    info!("Stderr task reached EOF. Exiting.");
+                    info!("(Sync) Stderr thread reached EOF. Exiting.");
                     break;
                 }
                 Ok(_) => {
                     let trimmed_line = line_buf.trim();
                     if !trimmed_line.is_empty() {
-                        warn!("[ascent-obs stderr] {}", trimmed_line);
+                        warn!("[ascent-obs stderr] {}", trimmed_line); // Log remains the same
                     }
                 }
                 Err(e) => {
-                    error!("Stderr task failed to read: {}", e);
+                    error!("(Sync) Stderr thread failed to read: {}", e);
                     break;
                 }
             }
         }
-        info!("Stderr task finished.");
+        info!("(Sync) Stderr thread finished.");
     })
 }
