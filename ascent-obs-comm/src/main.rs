@@ -21,7 +21,7 @@ const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/OBS_Organized_Build/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 20300; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 35352; // !! Make sure this PID is correct when you run! !!
 
 async fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
@@ -64,7 +64,7 @@ async fn run_recorder() -> Result<(), ObsError> {
     println!("\rSending start recording command...          "); // Clear countdown line
 
     // Create a RecordingConfig and start recording
-    let config = RecordingConfig::new(FILE_PATH, TARGET_PID)
+    let config = RecordingConfig::new(FILE_PATH)
         // Optional settings:
         .with_encoder("h264_texture_amf")       // Default is jim_nvenc anyway
         // .with_fps(60)                    // Default is 60
@@ -77,7 +77,7 @@ async fn run_recorder() -> Result<(), ObsError> {
         // --- Create the recorder directly with new() ---
     let recorder = Recorder::new(ASCENT_OBS_PATH, config, None).await?;
     
-    let recording_id = recorder.start_recording().await?;
+    let recording_id = recorder.start_recording(TARGET_PID).await?;
     println!("Start recording command sent (id: {})", recording_id);
 
     // Let it run

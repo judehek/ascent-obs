@@ -8,9 +8,6 @@ pub struct RecordingConfig {
     /// Path to save the output file (required)
     pub output_file: PathBuf,
     
-    /// Process ID of the game to capture (required)
-    pub game_pid: i32,
-    
     /// Video encoder ID (default: "jim_nvenc")
     pub encoder_id: String,
     
@@ -26,20 +23,24 @@ pub struct RecordingConfig {
     /// Audio sample rate (default: 48000)
     pub sample_rate: u32,
 
+    /// Bitrate in kbps (default: 6000)
     pub bitrate: u32,
 
     pub replay_buffer_seconds: Option<u32>,
 
     pub replay_buffer_output_file: Option<PathBuf>,
+
+    pub capture_microphone: bool,
+
+
 }
 
 impl RecordingConfig {
     /// Creates a new recording configuration with the required parameters 
     /// and default values for optional parameters.
-    pub fn new(output_file: impl Into<PathBuf>, game_pid: i32) -> Self {
+    pub fn new(output_file: impl Into<PathBuf>) -> Self {
         Self {
             output_file: output_file.into(),
-            game_pid,
             encoder_id: VIDEO_ENCODER_ID_X264.to_string(),
             fps: 30,
             resolution: (1920, 1080),
@@ -48,6 +49,7 @@ impl RecordingConfig {
             bitrate: 6000,
             replay_buffer_seconds: None,
             replay_buffer_output_file: None,
+            capture_microphone: false,
         }
     }
 
@@ -93,6 +95,11 @@ impl RecordingConfig {
 
     pub fn with_replay_buffer_output_file(mut self, replay_buffer_output_file: Option<impl Into<PathBuf>>) -> Self {
         self.replay_buffer_output_file = replay_buffer_output_file.map(|path| path.into());
+        self
+    }
+
+    pub fn with_capture_microphone(mut self, capture_microphone: bool) -> Self {
+        self.capture_microphone = capture_microphone;
         self
     }
 }

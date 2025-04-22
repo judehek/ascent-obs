@@ -162,8 +162,7 @@ pub struct WindowCaptureSourceSettings {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct GameSourceSettings {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub process_id: Option<i32>, // Process ID to capture
+    pub process_id: i32, // Process ID to capture
     #[serde(skip_serializing_if = "Option::is_none")]
     pub foreground: Option<bool>, // Hint if the game window is expected to be foreground
     #[serde(skip_serializing_if = "Option::is_none")]

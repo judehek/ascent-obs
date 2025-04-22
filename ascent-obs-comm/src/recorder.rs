@@ -27,6 +27,7 @@ pub struct Recorder {
     config: RecordingConfig,
     active_recording_id: tokio::sync::Mutex<Option<i32>>,
     active_replay_buffer_id: tokio::sync::Mutex<Option<i32>>,
+    game_pid: tokio::sync::Mutex<Option<i32>>,
     _event_drain_task: JoinHandle<()>
 }
 
@@ -67,6 +68,7 @@ impl Recorder {
             config,
             active_recording_id: tokio::sync::Mutex::new(None),
             active_replay_buffer_id: tokio::sync::Mutex::new(None),
+            game_pid: tokio::sync::Mutex::new(None),
             _event_drain_task: drain_task,
         })
     }
@@ -78,13 +80,11 @@ impl Recorder {
     ///
     /// # Example
     /// ```ignore
-    /// let config = RecordingConfig::new("my_recording.mp4", 12345)
-    ///     .with_fps(60)
-    ///     .with_resolution(1920, 1080);
-    /// let recording_id = recorder.start_recording(config).await?;
+    /// let recording_id = recorder.start_recording(game_pid).await?;
     /// ```
-    pub async fn start_recording(&self) -> Result<i32, ObsError> {
+    pub async fn start_recording(&self, game_pid: i32) -> Result<i32, ObsError> {
         let mut active_id_guard = self.active_recording_id.lock().await;
+        let mut game_pid_guard = self.game_pid.lock().await;
     
         if active_id_guard.is_some() {
             error!(
@@ -94,17 +94,20 @@ impl Recorder {
             return Err(ObsError::AlreadyRecording);
         }
     
+        // Store the game PID
+        *game_pid_guard = Some(game_pid);
+        
         let identifier = generate_identifier();
         
         // Create payload with common settings for video recording
-        let start_payload = self.create_start_payload(RecorderType::Video, true);
+        let start_payload = self.create_start_payload(RecorderType::Video, true, game_pid);
     
         info!(
             "Sending START command (id: {}, type: {:?}, path: {:?}, pid: {})",
             identifier,
             start_payload.recorder_type,
             self.config.output_file,
-            self.config.game_pid
+            game_pid
         );
     
         // TODO: we have no idea whether the recording actually started
@@ -115,7 +118,7 @@ impl Recorder {
     
         // Start the replay buffer if it's enabled
         if self.config.replay_buffer_seconds.is_some() && self.config.replay_buffer_output_file.is_some() {
-            self.start_replay_buffer().await?;
+            self.start_replay_buffer().await?;  // No need to pass game_pid anymore
         }
     
         Ok(identifier)
@@ -124,6 +127,16 @@ impl Recorder {
     /// Starts the replay buffer if enabled in configuration
     async fn start_replay_buffer(&self) -> Result<i32, ObsError> {
         let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
+        let game_pid_guard = self.game_pid.lock().await;
+        
+        // Get the game PID
+        let game_pid = match *game_pid_guard {
+            Some(pid) => pid,
+            None => {
+                error!("Cannot start replay buffer: no game PID is set");
+                return Err(ObsError::ShouldNotHappen("No game PID is set".to_string()));
+            }
+        };
         
         if active_replay_id_guard.is_some() {
             warn!("Replay buffer is already active.");
@@ -139,7 +152,7 @@ impl Recorder {
         let identifier = generate_identifier();
         
         // Create payload with common settings but specific to replay buffer
-        let replay_start_payload = self.create_start_payload(RecorderType::Replay, false);
+        let replay_start_payload = self.create_start_payload(RecorderType::Replay, false, game_pid);
         
         info!(
             "Sending START command for replay buffer (id: {}, type: {:?}, buffer length: {} seconds)",
@@ -156,7 +169,7 @@ impl Recorder {
         Ok(identifier)
     }
 
-    fn create_start_payload(&self, recorder_type: RecorderType, include_file_output: bool) -> StartCommandPayload {
+    fn create_start_payload(&self, recorder_type: RecorderType, include_file_output: bool, game_pid: i32) -> StartCommandPayload {
         let config = &self.config;
         
         // Create encoder settings
@@ -190,7 +203,7 @@ impl Recorder {
         // Create scene settings
         let sources = SceneSettings {
             game: Some(GameSourceSettings {
-                process_id: Some(config.game_pid),
+                process_id: game_pid,
                 foreground: Some(true),
                 allow_transparency: Some(false),
                 ..Default::default()
@@ -232,6 +245,17 @@ impl Recorder {
     
     /// Saves the current replay buffer to the configured file
     pub async fn save_replay_buffer(&self) -> Result<(), ObsError> {
+        let game_pid_guard = self.game_pid.lock().await;
+        
+        // Get the game PID
+        let game_pid = match *game_pid_guard {
+            Some(pid) => pid,
+            None => {
+                error!("Cannot save replay buffer: no game PID is set");
+                return Err(ObsError::ShouldNotHappen("No game PID is set".to_string()));
+            }
+        };
+        
         let current_replay_id = { // Create a smaller scope for the lock guard
             let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
     
@@ -297,7 +321,7 @@ impl Recorder {
     
         // Step 3: Start a new replay buffer with a new identifier
         info!("Attempting to start new replay buffer (after stopping id: {})...", current_replay_id);
-        match self.start_replay_buffer().await {
+        match self.start_replay_buffer().await {  // No need to pass game_pid anymore
             Ok(new_replay_id) => {
                 info!("Successfully started new replay buffer with id: {}", new_replay_id);
                 Ok(())
@@ -313,6 +337,7 @@ impl Recorder {
     pub async fn stop_recording(&self) -> Result<(), ObsError> {
         let mut active_id_guard = self.active_recording_id.lock().await;
         let mut active_replay_id_guard = self.active_replay_buffer_id.lock().await;
+        let mut game_pid_guard = self.game_pid.lock().await;
 
         // First stop the replay buffer if it's active
         if let Some(replay_identifier) = *active_replay_id_guard {
@@ -362,6 +387,9 @@ impl Recorder {
             // Regardless of whether the command succeeded (it might fail if OBS crashed),
             // we clear the state because we *intended* to stop.
             *active_id_guard = None;
+            
+            // Clear the game PID as well
+            *game_pid_guard = None;
 
             match result {
                 Ok(_) => {
@@ -376,6 +404,10 @@ impl Recorder {
             }
         } else {
             warn!("Stop recording called, but no recording is active.");
+            
+            // Clear the game PID anyway since we're trying to stop
+            *game_pid_guard = None;
+            
             // It's debatable whether this should be an error or not.
             // Let's make it an error for clarity.
             Err(ObsError::NotRecording)
