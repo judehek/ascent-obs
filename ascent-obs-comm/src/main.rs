@@ -72,7 +72,6 @@ fn run_recorder() -> Result<(), ObsError> {
         // .with_cursor(true)               // Default is true
         // .with_sample_rate(48000)         // Default is 48000
         .with_replay_buffer(Some(30))
-        .with_replay_buffer_output_file(Some(REPLAY_FILE_PATH))
         ;
         // --- Create the recorder directly with new() ---
     let recorder = Recorder::new(ASCENT_OBS_PATH, config, TARGET_PID, None)?;
@@ -85,7 +84,7 @@ fn run_recorder() -> Result<(), ObsError> {
     std::thread::sleep(std::time::Duration::from_secs(30));
 
     println!("saving replay buffer...");
-    recorder.save_replay_buffer()?;
+    recorder.save_replay_buffer(REPLAY_FILE_PATH)?;
     println!("saved replay buffer");
 
     std::thread::sleep(std::time::Duration::from_secs(10));

@@ -130,7 +130,7 @@ impl Recorder {
         *active_id_guard = Some(identifier);
 
         // Start the replay buffer if enabled (will block)
-        if self.config.replay_buffer_seconds.is_some() && self.config.replay_buffer_output_file.is_some() {
+        if self.config.replay_buffer_seconds.is_some() {
             // Call the now synchronous version
             self.start_replay_buffer()?;
         }
@@ -150,7 +150,7 @@ impl Recorder {
             return Ok(*active_replay_id_guard.as_ref().unwrap());
         }
 
-        if self.config.replay_buffer_seconds.is_none() || self.config.replay_buffer_output_file.is_none() {
+        if self.config.replay_buffer_seconds.is_none() {
             error!("(Sync) Cannot start replay buffer: missing replay buffer configuration");
             return Err(ObsError::ShouldNotHappen("Missing replay buffer configuration".to_string()));
         }
@@ -248,10 +248,10 @@ impl Recorder {
         }
     }
 
-    /// Saves the current replay buffer to the configured file (Synchronous).
+    /// Saves the current replay buffer to the specified file (Synchronous).
     /// Blocks while sending commands and potentially restarting the buffer.
-    pub fn save_replay_buffer(&self) -> Result<(), ObsError> {
-        let (current_replay_id, output_path, buffer_duration) = { // Scope for the lock
+    pub fn save_replay_buffer(&self, output_path: &str) -> Result<(), ObsError> {
+        let (current_replay_id, _path, _buffer_duration) = { // Scope for the lock
             let mut active_replay_id_guard = self.active_replay_buffer_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
 
             if active_replay_id_guard.is_none() {
@@ -261,13 +261,8 @@ impl Recorder {
 
             let id = *active_replay_id_guard.as_ref().unwrap();
 
-            let path = self.config.replay_buffer_output_file.as_ref()
-                .ok_or_else(|| {
-                    error!("(Sync) Cannot save replay buffer: no output file configured");
-                    ObsError::ShouldNotHappen("No replay buffer output file configured".to_string())
-                })?
-                .to_string_lossy()
-                .into_owned();
+            // Use the provided path directly
+            let path = output_path.to_string();
 
             let duration_ms = self.config.replay_buffer_seconds
                 .ok_or_else(|| {
@@ -304,7 +299,7 @@ impl Recorder {
             *active_replay_id_guard = None;
 
             // Return values needed for step 3 outside the lock
-             (id, path, duration_ms)
+            (id, path, duration_ms)
         }; // --- Lock Released Here ---
 
         // Step 3: Start a new replay buffer (synchronous)

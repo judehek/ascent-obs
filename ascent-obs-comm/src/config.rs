@@ -28,10 +28,7 @@ pub struct RecordingConfig {
 
     pub replay_buffer_seconds: Option<u32>,
 
-    pub replay_buffer_output_file: Option<PathBuf>,
-
     pub capture_microphone: bool,
-
 
 }
 
@@ -48,7 +45,6 @@ impl RecordingConfig {
             sample_rate: 48000,
             bitrate: 6000,
             replay_buffer_seconds: None,
-            replay_buffer_output_file: None,
             capture_microphone: false,
         }
     }
@@ -90,11 +86,6 @@ impl RecordingConfig {
 
     pub fn with_replay_buffer(mut self, replay_buffer_seconds: Option<u32>) -> Self {
         self.replay_buffer_seconds = replay_buffer_seconds;
-        self
-    }
-
-    pub fn with_replay_buffer_output_file(mut self, replay_buffer_output_file: Option<impl Into<PathBuf>>) -> Self {
-        self.replay_buffer_output_file = replay_buffer_output_file.map(|path| path.into());
         self
     }
 
