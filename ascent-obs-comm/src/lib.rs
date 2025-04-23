@@ -4,6 +4,7 @@ pub mod errors;
 pub mod communication;
 mod recorder;
 mod config;
+mod event_handler;
 
 // Re-export main client, recorder, error type, and event receiver
 pub use communication::ObsClient; // Keep ObsClient public if direct access is desired

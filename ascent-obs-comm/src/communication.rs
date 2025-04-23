@@ -1,69 +1,70 @@
+use crate::event_handler::{EventManager, WaitError};
 use crate::types::{CommandRequest, SimpleCommandRequest, EventNotification};
 use crate::errors::ObsError;
 use log::{debug, error, info, trace, warn};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Deserializer;
-use std::io::{BufRead, BufReader, Read, Write}; use std::os::windows::process::CommandExt;
-// Use std::io
+use std::io::{BufRead, BufReader, Read, Write};
+use std::os::windows::process::CommandExt;
 use std::path::Path;
-use std::process::{Child, ChildStdin, ChildStdout, ChildStderr, Command, Stdio}; // Use std::process
-use std::sync::mpsc; // Use std::sync::mpsc
-use std::thread::{self, JoinHandle}; // Use std::thread
+use std::process::{Child, ChildStdin, ChildStdout, ChildStderr, Command, Stdio};
+use std::sync::mpsc;
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-/// Handles communication with a running ascent-obs.exe process (Synchronous Version).
+/// Handles communication with a running ascent-obs.exe process.
 ///
-/// WARNING: Methods on this client (start, send*, shutdown) are blocking.
-/// Ensure this client is managed appropriately, potentially in its own thread,
-/// to avoid blocking critical parts of your application (like a UI thread).
-#[derive(Debug)]
+/// This client provides both synchronous command sending and the ability to
+/// wait for responses to specific commands or register callbacks for event types.
 pub struct ObsClient {
     child: Child,
     writer_handle: JoinHandle<Result<(), ObsError>>,
     reader_handle: JoinHandle<()>,
     stderr_handle: JoinHandle<()>,
-    command_sender: mpsc::SyncSender<String>, // Use std mpsc Sender
-    // No explicit shutdown signal needed; dropping command_sender signals the writer.
+    command_sender: mpsc::SyncSender<String>,
+    
+    // New field: Event manager for handling responses and callbacks
+    event_manager: EventManager,
 }
+
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 // Public interface
 impl ObsClient {
-    /// Starts the ascent-obs.exe process and establishes communication channels (Synchronous).
+    /// Starts the ascent-obs.exe process and establishes communication channels.
     ///
     /// This function blocks until the process is started and threads are spawned.
     pub fn start(
         ascent_obs_path: impl AsRef<Path>,
         channel_id: Option<&str>,
-        buffer_size: usize, // Buffer size for the command channel
-    ) -> Result<(Self, mpsc::Receiver<Result<EventNotification, ObsError>>), ObsError> // Use std mpsc Receiver
-    {
+        buffer_size: usize,
+    ) -> Result<Self, ObsError> {
         let ascent_obs_path_str = ascent_obs_path
             .as_ref()
             .to_str()
             .ok_or(ObsError::InvalidPath)?;
 
-        info!("(Sync) Starting ascent-obs process: {}", ascent_obs_path_str);
+        info!("Starting ascent-obs process: {}", ascent_obs_path_str);
 
-        let mut command = Command::new(ascent_obs_path_str); // Use std::process::Command
+        let mut command = Command::new(ascent_obs_path_str);
         command
             .creation_flags(CREATE_NO_WINDOW)
-            // kill_on_drop is implicit for std::process::Child
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
         if let Some(id) = channel_id {
-             warn!("(Sync) Channel ID provided ('{}'), but Rust client primarily uses stdio. Ensure ascent-obs handles this.", id);
-             command.arg("--channel").arg(id);
+            warn!("Channel ID provided ('{}'), but Rust client primarily uses stdio. Ensure ascent-obs handles this.", id);
+            command.arg("--channel").arg(id);
         } else {
-            info!("(Sync) Using stdio communication mode.");
+            info!("Using stdio communication mode.");
         }
 
-        let mut child = command.spawn().map_err(ObsError::ProcessStart)?;
-        info!("(Sync) ascent-obs process started (PID: {:?})", child.id());
+        let mut child = command.spawn().map_err(|e| ObsError::ProcessStart(e.to_string()))?;
+        info!("ascent-obs process started (PID: {:?})", child.id());
 
-        // take stdin/out/err (synchronous)
+        // Take stdin/out/err
         let stdin = child.stdin.take().ok_or(ObsError::PipeError(
             "Failed to take stdin".to_string(),
         ))?;
@@ -74,30 +75,29 @@ impl ObsClient {
             "Failed to take stderr".to_string(),
         ))?;
 
-        // Create standard mpsc channels
-        let (command_sender, command_receiver) = mpsc::sync_channel::<String>(buffer_size); // Use sync_channel for bounded buffer
-        let (event_sender, event_receiver) =
-            mpsc::sync_channel::<Result<EventNotification, ObsError>>(buffer_size); // Use sync_channel
+        // Create channels
+        let (command_sender, command_receiver) = mpsc::sync_channel::<String>(buffer_size);
+        let (event_sender, event_receiver) = mpsc::sync_channel::<Result<EventNotification, ObsError>>(buffer_size);
 
-        // Spawn standard OS threads
+        // Spawn standard threads
         let writer_handle = spawn_writer_thread(stdin, command_receiver);
         let reader_handle = spawn_reader_thread(stdout, event_sender.clone());
         let stderr_handle = spawn_stderr_thread(stderr);
+        
+        // Create the event manager with the event receiver
+        let event_manager = EventManager::new(event_receiver, buffer_size);
 
-        Ok((
-            Self {
-                child,
-                writer_handle,
-                reader_handle,
-                stderr_handle,
-                command_sender,
-                // No shutdown sender field needed
-            },
-            event_receiver, // Return the standard mpsc receiver
-        ))
+        Ok(Self {
+            child,
+            writer_handle,
+            reader_handle,
+            stderr_handle,
+            command_sender,
+            event_manager,
+        })
     }
 
-    /// Sends a command without a specific payload (Synchronous).
+    /// Sends a command without a specific payload.
     /// Blocks if the command channel buffer is full.
     pub fn send_simple_command(
         &self,
@@ -108,11 +108,11 @@ impl ObsClient {
             cmd: cmd_code,
             identifier,
         };
-        let json_string = serde_json::to_string(&command).map_err(ObsError::Serialization)?;
+        let json_string = serde_json::to_string(&command)?;
         self.send_json_string(json_string)
     }
 
-    /// Sends a command with a specific payload structure (Synchronous).
+    /// Sends a command with a specific payload structure.
     /// Blocks if the command channel buffer is full.
     pub fn send_command<T: Serialize + std::fmt::Debug>(
         &self,
@@ -125,245 +125,264 @@ impl ObsClient {
             identifier,
             payload,
         };
-        debug!("(Sync) Preparing to send command: {:?}", command);
-        let json_string = serde_json::to_string(&command).map_err(ObsError::Serialization)?;
-        info!("(Sync) Preparing to send command: {:?}", json_string);
+        debug!("Preparing to send command: {:?}", command);
+        let json_string = serde_json::to_string(&command)?;
+        info!("Preparing to send command: {}", json_string);
         self.send_json_string(json_string)
     }
 
-    /// Sends a pre-serialized JSON string command (Synchronous).
+    /// Sends a pre-serialized JSON string command.
     /// Blocks if the command channel buffer is full.
     fn send_json_string(&self, json_string: String) -> Result<(), ObsError> {
-        debug!("(Sync) Sending command JSON: {}", json_string);
-        // send() might block if the buffer is full
+        debug!("Sending command JSON: {}", json_string);
         self.command_sender
             .send(json_string)
-            .map_err(|e| ObsError::CommandSend(format!("(Sync) Command channel closed or error: {}", e)))?;
+            .map_err(|e| ObsError::CommandSend(format!("Command channel closed or error: {}", e)))?;
         Ok(())
     }
+    
+    /// Sends a command and waits for the response.
+    /// This is useful for commands that expect a specific response event.
+    pub fn send_command_and_wait<T, P, F>(
+        &self,
+        cmd_code: i32,
+        payload: P,
+        timeout: Duration,
+        expected_event_type: i32,
+        deserializer: F,
+    ) -> Result<T, ObsError>
+    where
+        P: Serialize + std::fmt::Debug,
+        T: DeserializeOwned + Send + 'static,
+        F: FnOnce(&EventNotification) -> Result<Option<T>, ObsError> + Send + 'static,
+    {
+        // Generate a unique identifier for this command/response pair
+        let identifier = crate::wrapper::generate_identifier();
+        
+        // Send the command with the identifier
+        self.send_command(cmd_code, Some(identifier), payload)?;
+        
+        // Wait for the response using the event manager
+        self.event_manager
+            .wait_for_response(identifier, timeout, expected_event_type, deserializer)
+            .map_err(|wait_err| {
+                // Convert WaitError to ObsError
+                match wait_err {
+                    WaitError::Timeout => ObsError::Timeout,
+                    _ => ObsError::EventManagerError(Box::new(wait_err)),
+                }
+            })
+    }
+    
+    /// Register a callback for a specific event type.
+    /// The callback will be called whenever an event of the specified type is received.
+    pub fn register_event_callback<F>(&self, event_type: i32, callback: F)
+    where
+        F: Fn(&EventNotification) + Send + 'static,
+    {
+        self.event_manager.register_event_callback(event_type, callback);
+    }
 
-    /// Shuts down the ascent-obs process and associated communication threads gracefully (Synchronous).
+    /// Shuts down the ascent-obs process and associated communication threads gracefully.
     ///
     /// This function BLOCKS until all threads have joined and the process has exited.
     pub fn shutdown(mut self) -> Result<(), ObsError> {
-        info!("(Sync) Shutting down ObsClient (PID: {:?})", self.child.id());
+        info!("Shutting down ObsClient (PID: {:?})", self.child.id());
 
-        // Drop the command sender. This signals the writer thread to exit
-        // because command_receiver.recv() will return Err.
+        // First, shutdown the event manager to stop processing events
+        self.event_manager.shutdown();
+        
+        // Drop the command sender - this signals the writer thread to exit
         drop(self.command_sender);
 
-        // Wait for the writer thread to finish. This blocks.
+        // Wait for the writer thread to finish
         match self.writer_handle.join() {
-            Ok(Ok(())) => info!("(Sync) Writer thread finished gracefully."),
-            Ok(Err(e)) => error!("(Sync) Writer thread finished with error: {}", e),
-            Err(panic_payload) => error!("(Sync) Writer thread panicked: {:?}", panic_payload), // Join returns Err on panic
+            Ok(Ok(())) => info!("Writer thread finished gracefully."),
+            Ok(Err(e)) => error!("Writer thread finished with error: {}", e),
+            Err(panic_payload) => error!("Writer thread panicked: {:?}", panic_payload),
         }
 
-        // Attempt to terminate the process (optional, writer closing stdin might be enough)
-        info!("(Sync) Attempting to terminate ascent-obs process...");
+        // Attempt to terminate the process
+        info!("Attempting to terminate ascent-obs process...");
         if let Err(e) = self.child.kill() {
-             // Log error, but proceed. Maybe it already exited.
-             error!("(Sync) Failed to kill ascent-obs process: {}. It might have already exited.", e);
+            error!("Failed to kill ascent-obs process: {}. It might have already exited.", e);
         } else {
-             info!("(Sync) Kill signal sent to ascent-obs process.");
+            info!("Kill signal sent to ascent-obs process.");
         }
 
-        // Wait for the process to exit. This blocks.
+        // Wait for the process to exit
         match self.child.wait() {
-            Ok(status) => info!("(Sync) ascent-obs process exited with status: {}", status),
-            Err(e) => error!("(Sync) Error waiting for ascent-obs process exit: {}", e),
+            Ok(status) => info!("ascent-obs process exited with status: {}", status),
+            Err(e) => error!("Error waiting for ascent-obs process exit: {}", e),
         }
 
-        // Wait for the reader and stderr threads to finish. They should exit
-        // when the process stdout/stderr streams are closed after process termination.
-        // These join calls block.
+        // Wait for the reader and stderr threads to finish
         if let Err(panic_payload) = self.reader_handle.join() {
-            error!("(Sync) Reader thread panicked: {:?}", panic_payload);
+            error!("Reader thread panicked: {:?}", panic_payload);
         } else {
-             info!("(Sync) Reader thread finished.");
+            info!("Reader thread finished.");
         }
         if let Err(panic_payload) = self.stderr_handle.join() {
-            error!("(Sync) Stderr thread panicked: {:?}", panic_payload);
+            error!("Stderr thread panicked: {:?}", panic_payload);
         } else {
-             info!("(Sync) Stderr thread finished.");
+            info!("Stderr thread finished.");
         }
 
-        info!("(Sync) ObsClient shutdown complete.");
+        info!("ObsClient shutdown complete.");
         Ok(())
     }
 }
 
 // --- Background Thread Functions ---
 
+// The thread functions remain the same as in your original code
 fn spawn_writer_thread(
     mut stdin: ChildStdin,
-    command_receiver: mpsc::Receiver<String>, // Standard mpsc Receiver
-) -> JoinHandle<Result<(), ObsError>> { // Standard JoinHandle
-    thread::spawn(move || { // Use std::thread::spawn
-        info!("(Sync) Writer thread started.");
-        // Loop while the channel is open. recv() blocks until a message arrives or the channel closes.
+    command_receiver: mpsc::Receiver<String>,
+) -> JoinHandle<Result<(), ObsError>> {
+    thread::spawn(move || {
+        info!("Writer thread started.");
         while let Ok(mut json_string) = command_receiver.recv() {
             if !json_string.ends_with('\n') {
                 json_string.push('\n');
             }
-            debug!("(Sync) Writer thread sending: {}", json_string.trim_end());
+            debug!("Writer thread sending: {}", json_string.trim_end());
 
-            // write_all and flush are blocking operations
             if let Err(e) = stdin.write_all(json_string.as_bytes()) {
-                error!("(Sync) Writer thread failed to write to stdin: {}", e);
-                // Don't drop stdin here explicitly, let the thread exit naturally
+                error!("Writer thread failed to write to stdin: {}", e);
                 return Err(ObsError::PipeError(format!("Write error: {}", e)));
             }
-             if let Err(e) = stdin.flush() {
-                 error!("(Sync) Writer thread failed to flush stdin: {}", e);
-                 return Err(ObsError::PipeError(format!("Flush error: {}", e)));
-             }
+            if let Err(e) = stdin.flush() {
+                error!("Writer thread failed to flush stdin: {}", e);
+                return Err(ObsError::PipeError(format!("Flush error: {}", e)));
+            }
 
-            // Synchronous sleep
             thread::sleep(Duration::from_secs(1));
-            debug!("(Sync) Writer thread completed 1-second sleep after send");
+            debug!("Writer thread completed 1-second sleep after send");
         }
 
-        // recv() returned Err, meaning the sender was dropped (shutdown signal)
-        info!("(Sync) Writer thread command channel closed. Exiting.");
-        // Dropping stdin happens implicitly when the thread scope ends
+        info!("Writer thread command channel closed. Exiting.");
         Ok(())
     })
 }
 
 fn spawn_reader_thread(
     stdout: ChildStdout,
-    event_sender: mpsc::SyncSender<Result<EventNotification, ObsError>>, // Standard mpsc Sender
-) -> JoinHandle<()> { // Standard JoinHandle
-    thread::spawn(move || { // Use std::thread::spawn
-        info!("(Sync) Reader thread started.");
-        // Use std::io::BufReader
+    event_sender: mpsc::SyncSender<Result<EventNotification, ObsError>>,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        info!("Reader thread started.");
         let mut reader = BufReader::new(stdout);
-        let mut read_buf = vec![0u8; 4096]; // Buffer for reading directly from stdout
-        let mut process_buf = Vec::with_capacity(8192); // Buffer to accumulate data for parsing
+        let mut read_buf = vec![0u8; 4096];
+        let mut process_buf = Vec::with_capacity(8192);
 
         loop {
-            // read() is a blocking call from std::io::Read
             match reader.read(&mut read_buf) {
                 Ok(0) => {
-                    info!("(Sync) Reader thread reached EOF on stdout. Exiting.");
-                     if !process_buf.is_empty() {
+                    info!("Reader thread reached EOF on stdout. Exiting.");
+                    if !process_buf.is_empty() {
                         warn!(
-                            "(Sync) Reader thread exited with unprocessed data in buffer ({} bytes): '{}'",
+                            "Reader thread exited with unprocessed data in buffer ({} bytes): '{}'",
                             process_buf.len(),
                             String::from_utf8_lossy(&process_buf).chars().take(100).collect::<String>()
                         );
                     }
-                    break; // End of stream
+                    break;
                 }
                 Ok(n) => {
-                    // Append newly read data to the processing buffer
                     process_buf.extend_from_slice(&read_buf[..n]);
                 }
                 Err(e) => {
-                    error!("(Sync) Reader thread failed to read from stdout: {}", e);
+                    error!("Reader thread failed to read from stdout: {}", e);
                     let err_res = Err(ObsError::PipeError(format!("Read error: {}", e)));
-                    // Try sending the error, ignore if channel is closed
                     let _ = event_sender.send(err_res);
-                    break; // Exit on IO read error
+                    break;
                 }
             }
 
-            // --- Process the accumulated buffer ---
             let mut bytes_consumed_in_buffer = 0;
             loop {
                 let current_slice = &process_buf[bytes_consumed_in_buffer..];
-                 if current_slice.is_empty() {
-                    break; // Nothing more to process in the buffer for now
+                if current_slice.is_empty() {
+                    break;
                 }
 
                 let de = Deserializer::from_slice(current_slice);
-                let mut iter = de.into_iter::<EventNotification>(); // serde_json is sync
+                let mut iter = de.into_iter::<EventNotification>();
 
                 match iter.next() {
                     Some(Ok(event)) => {
                         bytes_consumed_in_buffer += iter.byte_offset();
-                        debug!("(Sync) Reader thread successfully parsed event: {:?}", event);
-                        // send() can block if the event channel buffer is full
+                        debug!("Reader thread successfully parsed event: {:?}", event);
                         if event_sender.send(Ok(event)).is_err() {
-                            warn!("(Sync) Reader thread failed to send event: receiver dropped.");
-                            // Exit thread if we can't send events anymore
+                            warn!("Reader thread failed to send event: receiver dropped.");
                             return;
                         }
-                        debug!("(Sync) Reader task successfully sent event to MPSC channel");
+                        debug!("Reader task successfully sent event to MPSC channel");
                     }
                     Some(Err(e)) => {
                         let error_offset = iter.byte_offset();
                         if e.is_eof() {
-                            // Incomplete JSON object in buffer, need more data
-                             debug!("(Sync) Parser needs more data (EOF encountered).");
-                            break; // Break inner loop to read more data
+                            debug!("Parser needs more data (EOF encountered).");
+                            break;
                         } else {
-                            // Syntax or other parse error
-                             error!(
-                                "(Sync) JSON parse error: {} (at offset {} within current parse attempt, absolute {}) Context: '{}'",
+                            error!(
+                                "JSON parse error: {} (at offset {} within current parse attempt, absolute {}) Context: '{}'",
                                 e,
                                 error_offset,
                                 bytes_consumed_in_buffer + error_offset,
                                 String::from_utf8_lossy(current_slice).chars().take(80).collect::<String>()
                             );
                             let err_res = Err(ObsError::Deserialization(format!("JSON Parse Error: {}", e)));
-                             // Try sending the error, ignore if channel is closed
                             if event_sender.send(err_res).is_err() {
-                                warn!("(Sync) Reader thread failed to send parsing error: receiver dropped.");
-                                return; // Exit thread
+                                warn!("Reader thread failed to send parsing error: receiver dropped.");
+                                return;
                             }
-                            // Consume data up to the error point
                             bytes_consumed_in_buffer += error_offset;
-                            break; // Break inner loop, try reading more after draining
+                            break;
                         }
                     }
-                     None => {
-                        // Iter finished cleanly for this slice
+                    None => {
                         bytes_consumed_in_buffer = process_buf.len();
-                        break; // Break inner loop
+                        break;
                     }
                 }
-            } // End inner processing loop
+            }
 
-            // Drain consumed bytes
             if bytes_consumed_in_buffer > 0 {
                 debug!("Draining {} bytes from process buffer", bytes_consumed_in_buffer);
                 process_buf.drain(..bytes_consumed_in_buffer);
             }
-        } // End outer read loop
+        }
 
-        info!("(Sync) Reader thread finished.");
-        // Sender is dropped implicitly when the thread scope ends
+        info!("Reader thread finished.");
     })
 }
 
-fn spawn_stderr_thread(stderr: ChildStderr) -> JoinHandle<()> { // Standard JoinHandle
-    thread::spawn(move || { // Use std::thread::spawn
-        // Use std::io::BufReader
+fn spawn_stderr_thread(stderr: ChildStderr) -> JoinHandle<()> {
+    thread::spawn(move || {
         let mut reader = BufReader::new(stderr);
         let mut line_buf = String::new();
-        info!("(Sync) Stderr logging thread started.");
+        info!("Stderr logging thread started.");
         loop {
             line_buf.clear();
-            // read_line() is a blocking call from std::io::BufRead
             match reader.read_line(&mut line_buf) {
                 Ok(0) => {
-                    info!("(Sync) Stderr thread reached EOF. Exiting.");
+                    info!("Stderr thread reached EOF. Exiting.");
                     break;
                 }
                 Ok(_) => {
                     let trimmed_line = line_buf.trim();
                     if !trimmed_line.is_empty() {
-                        warn!("[ascent-obs stderr] {}", trimmed_line); // Log remains the same
+                        warn!("[ascent-obs stderr] {}", trimmed_line);
                     }
                 }
                 Err(e) => {
-                    error!("(Sync) Stderr thread failed to read: {}", e);
+                    error!("Stderr thread failed to read: {}", e);
                     break;
                 }
             }
         }
-        info!("(Sync) Stderr thread finished.");
+        info!("Stderr thread finished.");
     })
 }

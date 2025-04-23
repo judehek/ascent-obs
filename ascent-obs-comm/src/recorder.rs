@@ -4,7 +4,7 @@
 use crate::communication::ObsClient; // Assumes ObsClient is now the synchronous version
 use crate::errors::ObsError;
 use crate::types::{
-    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, EVT_ERR, EVT_QUERY_MACHINE_INFO, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
+    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
 };
 use crate::RecordingConfig;
 use log::{debug, error, info, warn};
@@ -31,7 +31,6 @@ fn generate_identifier() -> i32 {
 /// WARNING: Methods on this client (new, start*, save*, stop*, shutdown) are blocking.
 /// Ensure this client is managed appropriately, potentially in its own thread,
 /// to avoid blocking critical parts of your application (like a UI thread).
-#[derive(Debug)]
 pub struct Recorder {
     client: ObsClient, // Now the synchronous client
     config: RecordingConfig,
@@ -39,8 +38,6 @@ pub struct Recorder {
     active_recording_id: Mutex<Option<i32>>,
     active_replay_buffer_id: Mutex<Option<i32>>,
     game_pid: i32,
-    // --- Use std::thread::JoinHandle ---
-    _event_drain_task: JoinHandle<()>,
 }
 
 impl Recorder {
@@ -64,24 +61,7 @@ impl Recorder {
 
         let buffer_size = buffer_size.unwrap_or(128);
         // --- Call the synchronous ObsClient::start ---
-        let (client, event_receiver) = ObsClient::start(path, None, buffer_size)?;
-
-        // --- Spawn a standard OS thread to drain the event channel ---
-        let drain_task = thread::spawn(move || {
-            info!("(Sync) Event drain thread started.");
-            // event_receiver is now std::sync::mpsc::Receiver
-            // Loop while the channel is open. recv() blocks.
-            while let Ok(event_result) = event_receiver.recv() {
-                // Optionally log events
-                match &event_result {
-                    Ok(notification) => info!("Received event: {:?}", notification), // Use trace to avoid spamming logs
-                    Err(e) => warn!("(Sync) Drain Thread Received error event: {:?}", e),
-                }
-                // Just drop the event
-            }
-            // recv() returned Err, meaning the channel is closed (likely during shutdown)
-            info!("(Sync) Event drain thread finished (channel closed).");
-        });
+        let client = ObsClient::start(path, None, buffer_size)?;
 
         Ok(Self {
             client,
@@ -90,7 +70,6 @@ impl Recorder {
             active_recording_id: Mutex::new(None),
             active_replay_buffer_id: Mutex::new(None),
             game_pid,
-            _event_drain_task: drain_task, // Store the standard JoinHandle
         })
     }
 
@@ -293,7 +272,7 @@ impl Recorder {
                 recorder_type: RecorderType::Replay,
             };
             self.client
-                .send_command(CMD_STOP, Some(id), stop_payload)?;
+                .send_command(CMD_STOP_REPLAY_CAPTURE, Some(id), stop_payload)?;
 
             // Clear the active ID *after* successfully sending stop command
             *active_replay_id_guard = None;
@@ -303,7 +282,7 @@ impl Recorder {
         }; // --- Lock Released Here ---
 
         // Step 3: Start a new replay buffer (synchronous)
-        info!("(Sync) Attempting to start new replay buffer (after stopping id: {})...", current_replay_id);
+        /*info!("(Sync) Attempting to start new replay buffer (after stopping id: {})...", current_replay_id);
         match self.start_replay_buffer() { // This call is now synchronous
             Ok(new_replay_id) => {
                 info!("(Sync) Successfully started new replay buffer with id: {}", new_replay_id);
@@ -315,7 +294,8 @@ impl Recorder {
                 // Should we try again? Is the recorder in a bad state?
                 Err(e)
             }
-        }
+        }*/
+        Ok(())
     }
 
     /// Stops the active recording and replay buffer (Synchronous).
@@ -417,108 +397,47 @@ impl Recorder {
 ///
 /// # Returns
 /// The machine information payload or an error.
+/// Queries machine information (encoders, audio devices) without creating a Recorder.
+/// Uses the new event handling system to wait for the response.
+///
+/// # Arguments
+/// * `ascent_obs_path` - Path to the ascent-obs.exe executable.
+///
+/// # Returns
+/// The machine information payload or an error.
 pub fn query_machine_info(
     ascent_obs_path: impl Into<PathBuf>,
 ) -> Result<QueryMachineInfoEventPayload, ObsError> {
     let path = ascent_obs_path.into();
-    info!("(Sync) Querying machine info from: {:?}", path);
+    info!("Querying machine info from: {:?}", path);
 
-    // Start a temporary synchronous client
-    let (client, event_receiver) = ObsClient::start(path, None, 32)?; // Synchronous start
+    // Start a temporary client
+    let client = ObsClient::start(path, None, 32)?;
 
-    // Send the query command (synchronous)
-    let identifier = generate_identifier();
-    info!("(Sync) Sending QUERY_MACHINE_INFO command (id: {})", identifier);
-    if let Err(e) = client.send_simple_command(CMD_QUERY_MACHINE_INFO, Some(identifier)) {
-        error!("(Sync) Failed to send query command: {}", e);
-        // Attempt shutdown even if send failed
-        let _ = client.shutdown();
-        return Err(e);
-    }
-
-    // Wait for the response with a timeout using mpsc::recv_timeout
-    let timeout_duration = Duration::from_secs(5);
-    let mut response_payload: Option<QueryMachineInfoEventPayload> = None;
-    let mut response_error: Option<ObsError> = None;
-
-    info!("(Sync) Waiting for response (max {} seconds)...", timeout_duration.as_secs());
-    loop {
-        match event_receiver.recv_timeout(timeout_duration) {
-            Ok(Ok(notification)) => { // Successfully received an EventNotification
-                debug!("(Sync) Query received event type: {}, identifier: {:?}", notification.event, notification.identifier);
-                // TODO: Confirm if ascent-obs *does* return identifier for this event now.
-                // Assuming it *might* not, we primarily check the event type.
-                 if notification.event == EVT_QUERY_MACHINE_INFO {
-                     match notification.deserialize_payload::<QueryMachineInfoEventPayload>() {
-                         Ok(Some(payload)) => {
-                             info!("(Sync) Received valid QUERY_MACHINE_INFO response.");
-                             response_payload = Some(payload);
-                             break; // Got our response
-                         }
-                         Ok(None) => {
-                             warn!("(Sync) Received QUERY_MACHINE_INFO event with null/empty payload.");
-                             // Continue waiting or treat as error? Let's treat as error.
-                              response_error = Some(ObsError::Deserialization("Query response payload was empty".into()));
-                              break;
-                         }
-                         Err(e) => {
-                             error!("(Sync) Failed to deserialize QUERY_MACHINE_INFO payload: {}", e);
-                             response_error = Some(ObsError::Deserialization(format!("Failed to deserialize query response: {}", e)));
-                             break; // Deserialization error
-                         }
-                     }
-                 } else if notification.event == EVT_ERR && notification.identifier == Some(identifier) {
-                     // Received a specific error response for our command ID
-                     match notification.deserialize_payload::<ErrorEventPayload>() {
-                         Ok(Some(error_payload)) => {
-                             error!("(Sync) Received error response for query (Code {}): {:?}", error_payload.code, error_payload.desc);
-                             response_error = Some(ObsError::PipeError(format!(
-                                 "Error response: Code {}, Description: {:?}",
-                                 error_payload.code,
-                                 error_payload.desc
-                             )));
-                         }
-                         _ => {
-                              error!("(Sync) Received error response with invalid payload for query.");
-                              response_error = Some(ObsError::PipeError("Error response with invalid payload".into()));
-                         }
-                     }
-                      break; // Got an error response
-                 }
-                 // Ignore other events
-            }
-            Ok(Err(e)) => { // Received an ObsError from the reader thread
-                 error!("(Sync) Query received error from event channel: {}", e);
-                 response_error = Some(e);
-                 break; // Error from the underlying communication
-            }
-            Err(RecvTimeoutError::Timeout) => {
-                error!("(Sync) Timed out waiting for query response after {} seconds.", timeout_duration.as_secs());
-                response_error = Some(ObsError::PipeError("Timed out waiting for query response".into()));
-                break; // Timeout
-            }
-            Err(RecvTimeoutError::Disconnected) => {
-                 error!("(Sync) Event channel disconnected while waiting for query response.");
-                 response_error = Some(ObsError::PipeError("Event channel closed before receiving response".into()));
-                 break; // Channel closed prematurely
-            }
+    // Define the deserializer function for QueryMachineInfoEventPayload
+    fn deserialize_machine_info(
+        event: &EventNotification,
+    ) -> Result<Option<QueryMachineInfoEventPayload>, ObsError> {
+        if event.event == EVT_QUERY_MACHINE_INFO {
+            event.deserialize_payload::<QueryMachineInfoEventPayload>()
+        } else {
+            Ok(None)
         }
     }
 
-    // Shutdown the client (synchronous)
-    info!("(Sync) Shutting down temporary client used for query...");
+    // Send command and wait for response using the new method
+    let result = client.send_command_and_wait(
+        CMD_QUERY_MACHINE_INFO,
+        (), // No payload
+        Duration::from_secs(5),
+        EVT_QUERY_MACHINE_INFO,
+        deserialize_machine_info,
+    );
+
+    // Shutdown the client
     if let Err(e) = client.shutdown() {
-         warn!("(Sync) Error during temporary client shutdown: {}", e);
-         // Prioritize the response error over the shutdown error, unless no response error occurred.
-         if response_error.is_none() {
-             response_error = Some(e);
-         }
+        warn!("Error during temporary client shutdown: {}", e);
     }
 
-    // Return the result
-    match (response_payload, response_error) {
-        (Some(payload), None) => Ok(payload),
-        (_, Some(err)) => Err(err),
-        (None, None) => Err(ObsError::InternalError("Query finished without payload or error".into())), // Should not happen given the loop logic
-    }
+    result
 }
