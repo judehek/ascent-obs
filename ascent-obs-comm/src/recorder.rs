@@ -4,7 +4,7 @@
 use crate::communication::ObsClient; // Assumes ObsClient is now the synchronous version
 use crate::errors::ObsError;
 use crate::types::{
-    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
+    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_RECORDING_STOPPED, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
 };
 use crate::RecordingConfig;
 use log::{debug, error, info, warn};
@@ -22,7 +22,7 @@ use std::time::Duration; // For timeouts
 static NEXT_IDENTIFIER: AtomicI32 = AtomicI32::new(1);
 
 /// Generates a unique identifier for commands/requests. (remains the same)
-fn generate_identifier() -> i32 {
+pub fn generate_identifier() -> i32 {
     NEXT_IDENTIFIER.fetch_add(1, Ordering::Relaxed)
 }
 
@@ -302,8 +302,8 @@ impl Recorder {
     /// Blocks while sending commands.
     pub fn stop_recording(&self) -> Result<(), ObsError> {
         let mut stop_error: Option<ObsError> = None; // Keep track of the first error
-
-         // --- Lock replay buffer ID first ---
+    
+        // --- Lock replay buffer ID first ---
         let mut active_replay_id_guard = self.active_replay_buffer_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
         if let Some(replay_identifier) = *active_replay_id_guard {
             info!(
@@ -311,7 +311,7 @@ impl Recorder {
                 replay_identifier, RecorderType::Replay
             );
             let replay_stop_payload = StopCommandPayload { recorder_type: RecorderType::Replay };
-
+    
             match self.client.send_command(CMD_STOP, Some(replay_identifier), replay_stop_payload) {
                 Ok(_) => info!("(Sync) Replay buffer stop command sent successfully for id: {}", replay_identifier),
                 Err(e) => {
@@ -323,8 +323,7 @@ impl Recorder {
             *active_replay_id_guard = None;
         }
         drop(active_replay_id_guard); // Release replay lock before taking recording lock
-
-
+    
         // --- Lock recording ID ---
         let mut active_id_guard = self.active_recording_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
         if let Some(identifier) = *active_id_guard {
@@ -333,35 +332,64 @@ impl Recorder {
                 identifier, RecorderType::Video
             );
             let payload = StopCommandPayload { recorder_type: RecorderType::Video };
-
-            match self.client.send_command(CMD_STOP, Some(identifier), payload) {
-                Ok(_) => info!("(Sync) Recording stop command sent successfully for id: {}", identifier),
-                Err(e) => {
-                    error!("(Sync) Failed to send STOP command for main recording id {}: {}", identifier, e);
-                    // Prioritize this error if we didn't have one from the replay buffer
-                    if stop_error.is_none() {
-                        stop_error = Some(e);
+    
+            // Define the deserializer function for the stop response
+            fn deserialize_stop_response(
+                event: &EventNotification,
+            ) -> Result<Option<()>, ObsError> {
+                if event.event == EVT_RECORDING_STOPPED {
+                    Ok(Some(()))
+                } else if event.event == EVT_ERR {
+                    // Handle error event
+                    let error_payload = event.deserialize_payload::<ErrorEventPayload>()
+                        .map_err(|e| ObsError::Deserialization(format!("Failed to deserialize error payload: {}", e)))?;
+                    if let Some(payload) = error_payload {
+                        Err(ObsError::EventManagerError(format!("Recording stop error: {:?}", payload.data)))
+                    } else {
+                        Err(ObsError::EventManagerError("Unknown recording stop error".to_string()))
                     }
+                } else {
+                    Ok(None)
                 }
             }
-            // Clear the ID regardless of command success.
-            *active_id_guard = None;
-
-            // Return the stored error, if any
-            if let Some(err) = stop_error {
-                Err(err)
-            } else {
-                Ok(())
+    
+            // Send command and wait for response
+            match self.client.send_command_and_wait(
+                CMD_STOP,
+                payload,
+                Duration::from_secs(3), // Longer timeout for stopping recording
+                EVT_RECORDING_STOPPED,    // Expected event type
+                deserialize_stop_response,
+            ) {
+                Ok(_) => {
+                    info!("(Sync) Recording stop confirmed for id: {}", identifier);
+                    // Clear the ID after successful stop confirmation
+                    *active_id_guard = None;
+                    
+                    // Return the stored error from replay buffer stop, if any
+                    if let Some(err) = stop_error {
+                        Err(err)
+                    } else {
+                        Ok(())
+                    }
+                },
+                Err(e) => {
+                    error!("(Sync) Failed to stop main recording id {}: {}", identifier, e);
+                    // Clear the ID anyway since we tried to stop it
+                    *active_id_guard = None;
+                    
+                    // Prioritize this error over any replay buffer error
+                    Err(e)
+                }
             }
         } else {
-             warn!("(Sync) Stop recording called, but no main recording is active.");
-             // If there was an error stopping the replay buffer, return that.
-             // Otherwise, return NotRecording error.
-             stop_error.map_or(Err(ObsError::NotRecording), Err)
+            warn!("(Sync) Stop recording called, but no main recording is active.");
+            // If there was an error stopping the replay buffer, return that.
+            // Otherwise, return NotRecording error.
+            stop_error.map_or(Err(ObsError::NotRecording), Err)
         }
         // Locks are released when guards go out of scope
     }
-
 
     /// Shuts down the ascent-obs process and associated communication (Synchronous).
     /// Consumes the `Recorder` instance. Blocks until shutdown is complete.
@@ -419,7 +447,10 @@ pub fn query_machine_info(
         event: &EventNotification,
     ) -> Result<Option<QueryMachineInfoEventPayload>, ObsError> {
         if event.event == EVT_QUERY_MACHINE_INFO {
-            event.deserialize_payload::<QueryMachineInfoEventPayload>()
+            // Map the serde_json::Error to ObsError
+            let result = event.deserialize_payload::<QueryMachineInfoEventPayload>()
+                .map_err(|e| ObsError::Deserialization(format!("Failed to deserialize payload: {}", e)))?;
+            Ok(result)
         } else {
             Ok(None)
         }

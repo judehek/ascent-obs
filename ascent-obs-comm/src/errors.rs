@@ -1,8 +1,6 @@
 // src/errors.rs
 use thiserror::Error;
 
-use crate::event_handler::WaitError;
-
 // Add #[derive(Clone)] here
 #[derive(Error, Debug, Clone)] // <--- Add Clone
 pub enum ObsError {
@@ -59,7 +57,7 @@ pub enum ObsError {
     Timeout(String),
 
     #[error("Event manager error: {0:?}")]
-    EventManagerError(Box<WaitError>),
+    EventManagerError(String),
 }
 
 // Add From implementations manually where #[from] was removed or changed

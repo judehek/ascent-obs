@@ -1,4 +1,4 @@
-use crate::event_handler::{EventManager, WaitError};
+use crate::event_handler::{EventManager};
 use crate::types::{CommandRequest, SimpleCommandRequest, EventNotification};
 use crate::errors::ObsError;
 use log::{debug, error, info, trace, warn};
@@ -157,28 +157,21 @@ impl ObsClient {
         F: FnOnce(&EventNotification) -> Result<Option<T>, ObsError> + Send + 'static,
     {
         // Generate a unique identifier for this command/response pair
-        let identifier = crate::wrapper::generate_identifier();
+        let identifier = crate::recorder::generate_identifier();
         
         // Send the command with the identifier
         self.send_command(cmd_code, Some(identifier), payload)?;
         
-        // Wait for the response using the event manager
+        // Wait for the response using the event manager - now returns ObsError directly
         self.event_manager
             .wait_for_response(identifier, timeout, expected_event_type, deserializer)
-            .map_err(|wait_err| {
-                // Convert WaitError to ObsError
-                match wait_err {
-                    WaitError::Timeout => ObsError::Timeout,
-                    _ => ObsError::EventManagerError(Box::new(wait_err)),
-                }
-            })
     }
     
     /// Register a callback for a specific event type.
     /// The callback will be called whenever an event of the specified type is received.
     pub fn register_event_callback<F>(&self, event_type: i32, callback: F)
     where
-        F: Fn(&EventNotification) + Send + 'static,
+        F: Fn(&EventNotification) + Send + Sync + 'static,
     {
         self.event_manager.register_event_callback(event_type, callback);
     }

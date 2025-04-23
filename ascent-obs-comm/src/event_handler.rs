@@ -23,21 +23,6 @@ struct WaiterInfo {
     expected_event_type: i32, // Store the expected type for better error reporting
 }
 
-/// Error type returned by the `wait_for_response` method.
-#[derive(Debug, Clone)]
-pub enum WaitError {
-    Timeout,
-    ManagerShutdown,
-    // ObsError reported *within* the event payload (e.g., EVT_ERR)
-    Event(Box<ObsError>),
-    // The event arrived, but deserialization of the specific payload failed
-    Deserialization(String),
-    // Received a response with the correct identifier, but the event type didn't match expectation
-    UnexpectedEventType { expected: i32, received: i32 },
-    // Identifier was not found in the received event (should not happen if ascent-obs is correct)
-    MissingIdentifier,
-}
-
 // Messages sent internally from the public methods to the processing thread
 enum ManagerMessage {
     RegisterCallback {
@@ -120,7 +105,10 @@ impl EventManager {
                              let _ = info.sender.send(Ok(event)); // Ignore error if receiver dropped
                         } else {
                             warn!("Pending event for id {} had type {} but expected {}. Sending error.", identifier, event.event, info.expected_event_type);
-                            let _ = info.sender.send(Err(ObsError::Timeout));
+                            let _ = info.sender.send(Err(ObsError::EventManagerError(
+                                format!("Unexpected event type: expected {}, received {}", 
+                                    info.expected_event_type, event.event)
+                            )));
                         }
                     } else {
                         // Store the waiter
@@ -146,7 +134,7 @@ impl EventManager {
             // --- Check for OBS Events (with timeout to allow periodic checks) ---
             match event_receiver.recv_timeout(Duration::from_millis(100)) {
                 Ok(Ok(event)) => { // Successfully received an event
-                    trace!("Manager received event: {:?}", event);
+                    info!("Manager received event: {:?}", event);
                     let event_type = event.event;
                     let identifier_opt = event.identifier;
 
@@ -163,10 +151,10 @@ impl EventManager {
                             } else {
                                 // Type mismatch for the specific response! Send error.
                                 warn!("Waiter for id {} expected type {} but got {}. Sending error.", identifier, waiter_info.expected_event_type, event_type);
-                                let err_res = Err(WaitError::UnexpectedEventType {
-                                    expected: waiter_info.expected_event_type,
-                                    received: event_type,
-                                });
+                                let err_res = Err(ObsError::EventManagerError(
+                                    format!("Unexpected event type: expected {}, received {}", 
+                                        waiter_info.expected_event_type, event_type)
+                                ));
                                 if waiter_info.sender.send(err_res).is_err() {
                                     warn!("Waiter for id {} disconnected before receiving error.", identifier);
                                 }
@@ -222,7 +210,7 @@ impl EventManager {
             for id in timed_out_ids {
                 if let Some(info) = waiters.remove(&id) {
                     warn!("Waiter for identifier {} (expecting type {}) timed out.", id, info.expected_event_type);
-                    let _ = info.sender.send(Err(WaitError::Timeout)); // Ignore error if receiver dropped
+                    let _ = info.sender.send(Err(ObsError::Timeout("Request timed out".to_string()))); // Using Timeout with a String parameter
                 }
                 // Also remove from pending events if it arrived just now but waiter timed out
                 pending_events.remove(&id);
@@ -239,7 +227,7 @@ impl EventManager {
         // Notify any remaining waiters that the manager is shutting down
         for (id, info) in waiters.drain() {
             warn!("Notifying waiter for id {} about manager shutdown.", id);
-            let _ = info.sender.send(Err(WaitError::ManagerShutdown));
+            let _ = info.sender.send(Err(ObsError::EventManagerError("Manager shutdown".to_string())));
         }
         // Clear pending events
         pending_events.clear();
@@ -288,7 +276,7 @@ impl EventManager {
     ///
     /// # Returns
     /// * `Ok(T)` - If the expected event is received within the timeout and deserialization succeeds.
-    /// * `Err(WaitError)` - If a timeout occurs, the manager shuts down, deserialization fails,
+    /// * `Err(ObsError)` - If a timeout occurs, the manager shuts down, deserialization fails,
     ///   or the received event indicates an error.
     pub(crate) fn wait_for_response<T, F>(
         &self,
@@ -296,7 +284,7 @@ impl EventManager {
         timeout: Duration,
         expected_event_type: i32,
         deserializer: F,
-    ) -> Result<T, WaitError>
+    ) -> Result<T, ObsError>
     where
         T: DeserializeOwned + Send + 'static,
         F: FnOnce(&EventNotification) -> Result<Option<T>, ObsError> + Send + 'static,
@@ -319,7 +307,7 @@ impl EventManager {
         // Send the request to the manager thread to register us as a waiter
         if self.message_sender.send(msg).is_err() {
             error!("Failed to send RegisterWaiter request to manager thread (already shutdown?).");
-            return Err(WaitError::ManagerShutdown);
+            return Err(ObsError::EventManagerError("Manager already shutdown".to_string()));
         }
 
         // Block waiting for the response from the manager thread
@@ -338,9 +326,8 @@ impl EventManager {
                 // Double-check identifier (should always match if logic is correct)
                 if event.identifier != Some(identifier) {
                      error!("Internal logic error: Received event for wrong identifier {}!", identifier);
-                     return Err(WaitError::MissingIdentifier); // Or some internal error
+                     return Err(ObsError::EventManagerError("Received event with incorrect identifier".to_string()));
                 }
-
 
                 // Event type should already have been validated by the manager loop before sending Ok(event)
                 // Now, try to deserialize it using the provided function
@@ -352,28 +339,31 @@ impl EventManager {
                     Ok(None) => {
                         // Deserializer decided this wasn't the right event after all (unexpected)
                         error!("Deserializer skipped event type {} for identifier {}", event.event, identifier);
-                        Err(WaitError::UnexpectedEventType { expected: expected_event_type, received: event.event })
+                        Err(ObsError::EventManagerError(
+                            format!("Unexpected event type: expected {}, received {}", 
+                                expected_event_type, event.event)
+                        ))
                     }
                     Err(e) => {
                         error!("Deserialization failed for identifier {}: {}", identifier, e);
-                        Err(WaitError::Deserialization(e.to_string()))
+                        Err(ObsError::Deserialization(format!("Failed to deserialize event payload: {}", e)))
                     }
                 }
             }
-            Ok(Err(wait_error)) => {
-                // Manager sent back an error (Timeout, Shutdown, UnexpectedEventType)
-                error!("Received error from manager while waiting for id {}: {:?}", identifier, wait_error);
-                Err(wait_error)
+            Ok(Err(obs_error)) => {
+                // Manager sent back an error (Timeout, ManagerShutdown, EventManagerError)
+                error!("Received error from manager while waiting for id {}: {:?}", identifier, obs_error);
+                Err(obs_error)
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
                  error!("Timed out waiting for response channel for identifier {}", identifier);
                 // This likely means the manager detected the timeout correctly,
                 // but potentially our own timeout was slightly different. Or manager died.
-                Err(WaitError::Timeout)
+                Err(ObsError::Timeout("Request timed out".to_string()))
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => {
                 error!("Response channel disconnected while waiting for identifier {} (manager died?).", identifier);
-                Err(WaitError::ManagerShutdown)
+                Err(ObsError::EventManagerError("Manager shutdown or disconnected".to_string()))
             }
         }
     }
