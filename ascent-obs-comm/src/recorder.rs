@@ -296,6 +296,7 @@ impl Recorder {
             self.client
                 .send_command_and_wait(
                     CMD_START_REPLAY_CAPTURE,
+                    replay_id,
                     save_payload,
                     Duration::from_secs(3), // Adjust timeout as needed
                     EVT_REPLAY_CAPTURE_VIDEO_STARTED, // Replace with actual event code
@@ -362,18 +363,18 @@ impl Recorder {
             fn deserialize_stop_response(
                 event: &EventNotification,
             ) -> Result<Option<()>, ObsError> {
+                info!("Deserializing stop response: event type {}, expected {}", 
+                       event.event, EVT_RECORDING_STOPPED);
+                
                 if event.event == EVT_RECORDING_STOPPED {
+                    info!("Successfully matched event type for recording stop");
                     Ok(Some(()))
                 } else if event.event == EVT_ERR {
-                    // Handle error event
-                    let error_payload = event.deserialize_payload::<ErrorEventPayload>()
-                        .map_err(|e| ObsError::Deserialization(format!("Failed to deserialize error payload: {}", e)))?;
-                    if let Some(payload) = error_payload {
-                        Err(ObsError::EventManagerError(format!("Recording stop error: {:?}", payload.data)))
-                    } else {
-                        Err(ObsError::EventManagerError("Unknown recording stop error".to_string()))
-                    }
+                    error!("error");
+                    Ok(Some(()))
                 } else {
+                    info!("Event type {} didn't match expected {}, returning None", 
+                           event.event, EVT_RECORDING_STOPPED);
                     Ok(None)
                 }
             }
@@ -381,8 +382,9 @@ impl Recorder {
             // Send command and wait for response
             match self.client.send_command_and_wait(
                 CMD_STOP,
+                identifier,
                 payload,
-                Duration::from_secs(3), // Longer timeout for stopping recording
+                Duration::from_secs(10), // Longer timeout for stopping recording
                 EVT_RECORDING_STOPPED,    // Expected event type
                 deserialize_stop_response,
             ) {

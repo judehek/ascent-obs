@@ -146,6 +146,7 @@ impl ObsClient {
     pub fn send_command_and_wait<T, P, F>(
         &self,
         cmd_code: i32,
+        identifier: i32,
         payload: P,
         timeout: Duration,
         expected_event_type: i32,
@@ -156,13 +157,10 @@ impl ObsClient {
         T: DeserializeOwned + Send + 'static,
         F: FnOnce(&EventNotification) -> Result<Option<T>, ObsError> + Send + 'static,
     {
-        // Generate a unique identifier for this command/response pair
-        let identifier = crate::recorder::generate_identifier();
+        // Send the command with the provided identifier
+        self.send_command(cmd_code, Some(identifier.clone()), payload)?;
         
-        // Send the command with the identifier
-        self.send_command(cmd_code, Some(identifier), payload)?;
-        
-        // Wait for the response using the event manager - now returns ObsError directly
+        // Wait for the response using the event manager
         self.event_manager
             .wait_for_response(identifier, timeout, expected_event_type, deserializer)
     }

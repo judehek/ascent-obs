@@ -103,17 +103,19 @@ impl EventManager {
                         debug!("Event for waiter id {} was pending. Forwarding immediately.", identifier);
                         if event.event == info.expected_event_type {
                              let _ = info.sender.send(Ok(event)); // Ignore error if receiver dropped
+                        } else if event.event == 5 && info.expected_event_type == 6 {
+                            // Special case: If we have a pending event 5 but expect 6, put the event back and
+                            // store the waiter to wait for event 6
+                            debug!("Pending event 5 found for id {} but expecting 6. Continuing to wait.", identifier);
+                            pending_events.insert(identifier, event); // Put the event back
+                            waiters.insert(identifier, info); // Store the waiter
                         } else {
-                            warn!("Pending event for id {} had type {} but expected {}. Sending error.", identifier, event.event, info.expected_event_type);
+                            warn!("Pending event for id {} had type {} but expected {}. Sending error.", 
+                                  identifier, event.event, info.expected_event_type);
                             let _ = info.sender.send(Err(ObsError::EventManagerError(
                                 format!("Unexpected event type: expected {}, received {}", 
                                     info.expected_event_type, event.event)
                             )));
-                        }
-                    } else {
-                        // Store the waiter
-                        if waiters.insert(identifier, info).is_some() {
-                            warn!("Duplicate waiter registered for identifier {}. Overwriting.", identifier);
                         }
                     }
                     continue; // Check for more messages immediately
@@ -141,16 +143,22 @@ impl EventManager {
                     // 1. Check if a specific task is waiting for this event's identifier
                     if let Some(identifier) = identifier_opt {
                         if let Some(waiter_info) = waiters.remove(&identifier) {
-                            debug!("Found waiter for identifier {}. Forwarding event.", identifier);
+                            debug!("Found waiter for identifier {}. Processing event.", identifier);
+                            
                             // Check if the event type matches expectation
                             if event_type == waiter_info.expected_event_type {
                                 // Send the successful event
                                 if waiter_info.sender.send(Ok(event.clone())).is_err() {
                                     warn!("Waiter for id {} disconnected before receiving event.", identifier);
                                 }
+                            } else if event_type == 5 && waiter_info.expected_event_type == 6 {
+                                // Special case: If we receive event 5 but expect 6, put the waiter back and continue waiting
+                                debug!("Received intermediate event 5 for id {} but expecting 6. Continuing to wait.", identifier);
+                                waiters.insert(identifier, waiter_info);
                             } else {
                                 // Type mismatch for the specific response! Send error.
-                                warn!("Waiter for id {} expected type {} but got {}. Sending error.", identifier, waiter_info.expected_event_type, event_type);
+                                warn!("Waiter for id {} expected type {} but got {}. Sending error.", 
+                                      identifier, waiter_info.expected_event_type, event_type);
                                 let err_res = Err(ObsError::EventManagerError(
                                     format!("Unexpected event type: expected {}, received {}", 
                                         waiter_info.expected_event_type, event_type)
@@ -159,12 +167,10 @@ impl EventManager {
                                     warn!("Waiter for id {} disconnected before receiving error.", identifier);
                                 }
                             }
-                            // Event was consumed by a waiter, potentially skip general callbacks?
-                            // Let's allow both for now. Callbacks might want to see responses too.
                         } else {
                             // No one waiting *currently*. Store it in case a waiter registers slightly late.
-                             debug!("Received event with identifier {}, but no current waiter. Storing.", identifier);
-                             pending_events.insert(identifier, event.clone()); // Clone needed for potential callback use
+                            debug!("Received event with identifier {}, but no current waiter. Storing.", identifier);
+                            pending_events.insert(identifier, event.clone()); // Clone needed for potential callback use
                         }
                     }
 
