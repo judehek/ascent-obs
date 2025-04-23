@@ -455,34 +455,43 @@ pub fn query_machine_info(
 
     // Start a temporary client
     let client = ObsClient::start(path, None, 32)?;
-
-    // Define the deserializer function for QueryMachineInfoEventPayload
-    fn deserialize_machine_info(
-        event: &EventNotification,
-    ) -> Result<Option<QueryMachineInfoEventPayload>, ObsError> {
-        if event.event == EVT_QUERY_MACHINE_INFO {
-            // Map the serde_json::Error to ObsError
-            let result = event.deserialize_payload::<QueryMachineInfoEventPayload>()
-                .map_err(|e| ObsError::Deserialization(format!("Failed to deserialize payload: {}", e)))?;
-            Ok(result)
-        } else {
-            Ok(None)
+    
+    // Create a channel to receive the info payload
+    let (sender, receiver) = std::sync::mpsc::channel();
+    // Clone sender before moving it into closures
+    let main_sender = sender.clone();
+    let err_sender = sender;
+    
+    // Register a callback for the expected event type
+    client.register_event_callback(EVT_QUERY_MACHINE_INFO, move |event| {
+        if let Ok(Some(payload)) = event.deserialize_payload::<QueryMachineInfoEventPayload>() {
+            let _ = main_sender.send(Ok(payload));
         }
-    }
-
-    // Send command and wait for response using the new method
-    let result = client.send_command_and_wait(
-        CMD_QUERY_MACHINE_INFO,
-        (), // No payload
-        Duration::from_secs(5),
-        EVT_QUERY_MACHINE_INFO,
-        deserialize_machine_info,
-    );
-
+    });
+    
+    // Also register a callback for errors
+    client.register_event_callback(EVT_ERR, move |event| {
+        if let Ok(Some(error_payload)) = event.deserialize_payload::<ErrorEventPayload>() {
+            let _ = err_sender.send(Err(
+                ObsError::EventManagerError(format!("Query machine info error: {:?}", error_payload.data))
+            ));
+        }
+    });
+    
+    // Send the command without waiting for response
+    client.send_simple_command(CMD_QUERY_MACHINE_INFO, None)?;
+    
+    // Wait for response through our channel
+    let result = match receiver.recv_timeout(Duration::from_secs(5)) {
+        Ok(result) => result,
+        Err(RecvTimeoutError::Timeout) => Err(ObsError::Timeout("Query machine info timed out".to_string())),
+        Err(RecvTimeoutError::Disconnected) => Err(ObsError::EventManagerError("Channel disconnected".to_string())),
+    };
+    
     // Shutdown the client
     if let Err(e) = client.shutdown() {
         warn!("Error during temporary client shutdown: {}", e);
     }
-
+    
     result
 }
