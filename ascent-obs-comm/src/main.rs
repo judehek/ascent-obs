@@ -21,7 +21,7 @@ const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/libraries/ascent-obs/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 44528; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 25692; // !! Make sure this PID is correct when you run! !!
 
 fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
@@ -81,7 +81,7 @@ fn run_recorder() -> Result<(), ObsError> {
 
     // Let it run
     println!("Waiting 30 seconds for recording...");
-    std::thread::sleep(std::time::Duration::from_secs(30));
+    std::thread::sleep(std::time::Duration::from_secs(60));
 
     println!("saving replay buffer...");
     recorder.save_replay_buffer(REPLAY_FILE_PATH)?;

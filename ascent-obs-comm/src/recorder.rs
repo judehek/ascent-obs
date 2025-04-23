@@ -4,7 +4,7 @@
 use crate::communication::ObsClient; // Assumes ObsClient is now the synchronous version
 use crate::errors::ObsError;
 use crate::types::{
-    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_RECORDING_STOPPED, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
+    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_RECORDING_STOPPED, EVT_REPLAY_CAPTURE_VIDEO_STARTED, EVT_REPLAY_STARTED, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
 };
 use crate::RecordingConfig;
 use log::{debug, error, info, warn};
@@ -232,69 +232,83 @@ impl Recorder {
     pub fn save_replay_buffer(&self, output_path: &str) -> Result<(), ObsError> {
         let (current_replay_id, _path, _buffer_duration) = { // Scope for the lock
             let mut active_replay_id_guard = self.active_replay_buffer_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
-
+    
             if active_replay_id_guard.is_none() {
                 error!("(Sync) Cannot save replay buffer: replay buffer is not active");
                 return Err(ObsError::NotRecording); // Or a more specific error
             }
-
-            let id = *active_replay_id_guard.as_ref().unwrap();
-
+    
+            let replay_id = *active_replay_id_guard.as_ref().unwrap();
+    
             // Use the provided path directly
             let path = output_path.to_string();
-
+    
             let duration_ms = self.config.replay_buffer_seconds
                 .ok_or_else(|| {
                     error!("(Sync) Cannot save replay buffer: no buffer duration configured");
                     ObsError::ShouldNotHappen("No replay buffer duration configured".to_string())
                 })? * 1000;
-
-            // Step 1: Send command to save the replay buffer contents (synchronous)
-            let save_id = generate_identifier();
+    
+            // Define the deserializer function for the start replay capture response
+            fn deserialize_start_replay_response(
+                event: &EventNotification,
+            ) -> Result<Option<()>, ObsError> {
+                if event.event == EVT_REPLAY_CAPTURE_VIDEO_STARTED {
+                    Ok(Some(()))
+                } else if event.event == EVT_ERR {
+                    // Handle error event
+                    let error_payload = event.deserialize_payload::<ErrorEventPayload>()
+                        .map_err(|e| ObsError::Deserialization(format!("Failed to deserialize error payload: {}", e)))?;
+                    if let Some(payload) = error_payload {
+                        Err(ObsError::EventManagerError(format!("Replay capture error: {:?}", payload.data)))
+                    } else {
+                        Err(ObsError::EventManagerError("Unknown replay capture error".to_string()))
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
+    
+            // Step 1: Send command to save the replay buffer contents and wait for the response
+            // Use the SAME identifier as the active replay buffer
             info!(
                 "(Sync) Sending SAVE_REPLAY_BUFFER command (id: {}, duration: {}ms, path: {:?})",
-                save_id, duration_ms, path
+                replay_id, duration_ms, path
             );
             let save_payload = StartReplayCaptureCommandPayload {
                 head_duration: duration_ms as i64,
                 path: path.clone(),
                 thumbnail_folder: None,
             };
+            
+            // Use send_command_and_wait with the same replay_id
             self.client
-                .send_command(CMD_START_REPLAY_CAPTURE, Some(save_id), save_payload)?;
-
+                .send_command_and_wait(
+                    CMD_START_REPLAY_CAPTURE,
+                    save_payload,
+                    Duration::from_secs(3), // Adjust timeout as needed
+                    EVT_REPLAY_CAPTURE_VIDEO_STARTED, // Replace with actual event code
+                    deserialize_start_replay_response,
+                )?;
+    
             // Step 2: Send STOP command for the *current* replay buffer (synchronous)
+            // Again using the SAME identifier
             info!(
                 "(Sync) Sending STOP command for replay buffer (id: {}, type: {:?})",
-                id, RecorderType::Replay
+                replay_id, RecorderType::Replay
             );
             let stop_payload = StopCommandPayload {
                 recorder_type: RecorderType::Replay,
             };
             self.client
-                .send_command(CMD_STOP_REPLAY_CAPTURE, Some(id), stop_payload)?;
-
+                .send_command(CMD_STOP_REPLAY_CAPTURE, Some(replay_id), stop_payload)?;
+    
             // Clear the active ID *after* successfully sending stop command
             *active_replay_id_guard = None;
-
+    
             // Return values needed for step 3 outside the lock
-            (id, path, duration_ms)
+            (replay_id, path, duration_ms)
         }; // --- Lock Released Here ---
-
-        // Step 3: Start a new replay buffer (synchronous)
-        /*info!("(Sync) Attempting to start new replay buffer (after stopping id: {})...", current_replay_id);
-        match self.start_replay_buffer() { // This call is now synchronous
-            Ok(new_replay_id) => {
-                info!("(Sync) Successfully started new replay buffer with id: {}", new_replay_id);
-                Ok(())
-            }
-            Err(e) => {
-                error!("(Sync) Failed to start new replay buffer: {}", e);
-                // Consider if you need error recovery here.
-                // Should we try again? Is the recorder in a bad state?
-                Err(e)
-            }
-        }*/
         Ok(())
     }
 
