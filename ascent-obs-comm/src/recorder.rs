@@ -4,7 +4,7 @@
 use crate::communication::ObsClient; // Assumes ObsClient is now the synchronous version
 use crate::errors::ObsError;
 use crate::types::{
-    AudioDeviceSettings, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_RECORDING_STOPPED, EVT_REPLAY_CAPTURE_VIDEO_STARTED, EVT_REPLAY_STARTED, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
+    AudioDeviceSettings, AudioExtraOptions, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_RECORDING_STOPPED, EVT_REPLAY_CAPTURE_VIDEO_STARTED, EVT_REPLAY_STARTED, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
 };
 use crate::RecordingConfig;
 use log::{debug, error, info, warn};
@@ -154,12 +154,12 @@ impl Recorder {
 
     // create_start_payload was already synchronous, no changes needed here
     fn create_start_payload(&self, recorder_type: RecorderType, include_file_output: bool, game_pid: i32) -> StartCommandPayload {
-         let config = &self.config;
-
+        let config = &self.config;
+    
         // Create encoder settings
         let mut encoder_settings = HashMap::new();
         encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
-
+    
         // Create video settings
         let video_settings = VideoSettings {
             video_encoder: VideoEncoderSettings {
@@ -175,15 +175,26 @@ impl Recorder {
             output_height: Some(config.output_resolution.1),
             ..Default::default()
         };
-
-        // Create audio settings
-        let audio_settings = AudioSettings {
-            sample_rate: Some(config.sample_rate),
-            output_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
-            input_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
-            ..Default::default()
+    
+        let audio_settings = {
+            let mut settings = AudioSettings {
+                sample_rate: Some(config.sample_rate),
+                output_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
+                input_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
+                ..Default::default()
+            };
+            
+            // Only add extra_options if window_audio_only is Some
+            if let Some(window_audio_processes) = &config.window_audio_only {
+                settings.extra_options = Some(AudioExtraOptions {
+                    audio_capture_process: Some(window_audio_processes.clone()),
+                    ..Default::default()
+                });
+            }
+            
+            settings
         };
-
+    
         // Create scene settings
         let sources = SceneSettings {
             game: Some(GameSourceSettings {
@@ -194,7 +205,7 @@ impl Recorder {
             }),
             ..Default::default()
         };
-
+    
         // Create replay settings if configured
         let replay_settings = if config.replay_buffer_seconds.is_some() {
             Some(ReplaySettings {
@@ -204,7 +215,7 @@ impl Recorder {
         } else {
             None
         };
-
+    
         // Create file output settings if requested
         let file_output = if include_file_output {
             Some(FileOutputSettings {
@@ -214,7 +225,7 @@ impl Recorder {
         } else {
             None
         };
-
+    
         // Construct and return the payload
         StartCommandPayload {
             recorder_type,
