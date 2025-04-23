@@ -300,6 +300,7 @@ impl Recorder {
                     save_payload,
                     Duration::from_secs(3), // Adjust timeout as needed
                     EVT_REPLAY_CAPTURE_VIDEO_STARTED, // Replace with actual event code
+                    vec![],
                     deserialize_start_replay_response,
                 )?;
     
@@ -384,8 +385,9 @@ impl Recorder {
                 CMD_STOP,
                 identifier,
                 payload,
-                Duration::from_secs(10), // Longer timeout for stopping recording
+                Duration::from_secs(20), // Longer timeout for stopping recording
                 EVT_RECORDING_STOPPED,    // Expected event type
+                vec![],
                 deserialize_stop_response,
             ) {
                 Ok(_) => {

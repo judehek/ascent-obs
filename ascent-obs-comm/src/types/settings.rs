@@ -241,7 +241,6 @@ pub struct SceneSettings { // Represents the C++ "sources" object
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[serde(rename_all = "camelCase")]
 pub struct ReplaySettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_time_sec: Option<u32>,

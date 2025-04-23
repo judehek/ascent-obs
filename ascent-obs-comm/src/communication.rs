@@ -150,6 +150,7 @@ impl ObsClient {
         payload: P,
         timeout: Duration,
         expected_event_type: i32,
+        error_event_types: Vec<i32>,
         deserializer: F,
     ) -> Result<T, ObsError>
     where
@@ -162,7 +163,7 @@ impl ObsClient {
         
         // Wait for the response using the event manager
         self.event_manager
-            .wait_for_response(identifier, timeout, expected_event_type, deserializer)
+            .wait_for_response(identifier, timeout, expected_event_type, error_event_types, deserializer)
     }
     
     /// Register a callback for a specific event type.

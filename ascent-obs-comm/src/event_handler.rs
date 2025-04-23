@@ -21,6 +21,7 @@ struct WaiterInfo {
     sender: Sender<Result<EventNotification, ObsError>>,
     deadline: Instant,
     expected_event_type: i32, // Store the expected type for better error reporting
+    error_event_types: Vec<i32>, // New field: list of event types that indicate errors
 }
 
 // Messages sent internally from the public methods to the processing thread
@@ -101,22 +102,31 @@ impl EventManager {
                     // Check if the event we are waiting for already arrived
                     if let Some(event) = pending_events.remove(&identifier) {
                         debug!("Event for waiter id {} was pending. Forwarding immediately.", identifier);
+                        
+                        // Check if this is the expected event type
                         if event.event == info.expected_event_type {
-                             let _ = info.sender.send(Ok(event)); // Ignore error if receiver dropped
-                        } else if event.event == 5 && info.expected_event_type == 6 {
-                            // Special case: If we have a pending event 5 but expect 6, put the event back and
-                            // store the waiter to wait for event 6
-                            debug!("Pending event 5 found for id {} but expecting 6. Continuing to wait.", identifier);
-                            pending_events.insert(identifier, event); // Put the event back
-                            waiters.insert(identifier, info); // Store the waiter
-                        } else {
-                            warn!("Pending event for id {} had type {} but expected {}. Sending error.", 
-                                  identifier, event.event, info.expected_event_type);
+                            let _ = info.sender.send(Ok(event)); // Ignore error if receiver dropped
+                        } 
+                        // Check if this is an error event type
+                        else if info.error_event_types.contains(&event.event) {
+                            warn!("Pending event for id {} had error type {}. Sending error.", 
+                                  identifier, event.event);
                             let _ = info.sender.send(Err(ObsError::EventManagerError(
-                                format!("Unexpected event type: expected {}, received {}", 
-                                    info.expected_event_type, event.event)
+                                format!("Received error event type: {}", event.event)
                             )));
                         }
+                        // Otherwise, this is an unexpected event - log it and continue waiting
+                        else {
+                            warn!("Pending event for id {} had type {} but expected {}. Continuing to wait.", 
+                                  identifier, event.event, info.expected_event_type);
+                            // Put the waiter in the waiting map
+                            waiters.insert(identifier, info);
+                            // We might want to save this event somewhere if it's important,
+                            // but for now, we'll just drop it and wait for the next one
+                        }
+                    } else {
+                        // No pending event, store the waiter
+                        waiters.insert(identifier, info);
                     }
                     continue; // Check for more messages immediately
                 }
@@ -151,21 +161,29 @@ impl EventManager {
                                 if waiter_info.sender.send(Ok(event.clone())).is_err() {
                                     warn!("Waiter for id {} disconnected before receiving event.", identifier);
                                 }
-                            } else if event_type == 5 && waiter_info.expected_event_type == 6 {
-                                // Special case: If we receive event 5 but expect 6, put the waiter back and continue waiting
-                                debug!("Received intermediate event 5 for id {} but expecting 6. Continuing to wait.", identifier);
-                                waiters.insert(identifier, waiter_info);
-                            } else {
-                                // Type mismatch for the specific response! Send error.
-                                warn!("Waiter for id {} expected type {} but got {}. Sending error.", 
-                                      identifier, waiter_info.expected_event_type, event_type);
+                            }
+                            // Check if this is an error event type
+                            else if waiter_info.error_event_types.contains(&event_type) {
+                                warn!("Received error event type {} for id {}. Sending error.", 
+                                      event_type, identifier);
                                 let err_res = Err(ObsError::EventManagerError(
-                                    format!("Unexpected event type: expected {}, received {}", 
-                                        waiter_info.expected_event_type, event_type)
+                                    format!("Received error event type: {}", event_type)
                                 ));
                                 if waiter_info.sender.send(err_res).is_err() {
                                     warn!("Waiter for id {} disconnected before receiving error.", identifier);
                                 }
+                            }
+                            // Otherwise, this is an unexpected event - log it and continue waiting
+                            else {
+                                // Type mismatch but not in error list - log and put the waiter back
+                                warn!("Waiter for id {} expected type {} but got {}. Continuing to wait.", 
+                                      identifier, waiter_info.expected_event_type, event_type);
+                                
+                                // Put the waiter back in the map to continue waiting
+                                waiters.insert(identifier, waiter_info);
+                                
+                                // We might want to do something with this event, like save it,
+                                // but for now, we'll just continue waiting for the next one
                             }
                         } else {
                             // No one waiting *currently*. Store it in case a waiter registers slightly late.
@@ -289,6 +307,7 @@ impl EventManager {
         identifier: i32,
         timeout: Duration,
         expected_event_type: i32,
+        error_event_types: Vec<i32>,
         deserializer: F,
     ) -> Result<T, ObsError>
     where
@@ -303,6 +322,7 @@ impl EventManager {
             sender: response_sender,
             deadline,
             expected_event_type,
+            error_event_types,
         };
 
         let msg = ManagerMessage::RegisterWaiter {
