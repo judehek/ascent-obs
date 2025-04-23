@@ -416,6 +416,23 @@ impl Recorder {
         // Locks are released when guards go out of scope
     }
 
+    pub fn request_shutdown(&self) -> Result<(), ObsError> {
+        info!("(Sync) Requesting shutdown of ascent-obs process...");
+    
+        // Send shutdown command (synchronous)
+        info!("(Sync) Sending SHUTDOWN command to ascent-obs process");
+        match self.client.send_simple_command(CMD_SHUTDOWN, None) {
+            Ok(_) => {
+                info!("(Sync) Successfully sent shutdown command to ascent-obs process");
+                Ok(())
+            },
+            Err(e) => {
+                warn!("(Sync) Failed to send shutdown command to ascent-obs process: {}", e);
+                Err(e)
+            }
+        }
+    }
+
     /// Shuts down the ascent-obs process and associated communication (Synchronous).
     /// Consumes the `Recorder` instance. Blocks until shutdown is complete.
     pub fn shutdown(self) -> Result<(), ObsError> {
