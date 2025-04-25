@@ -180,7 +180,12 @@ impl Recorder {
             let mut settings = AudioSettings {
                 sample_rate: Some(config.sample_rate),
                 output_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
-                input_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
+                // Only include input_device if capture_microphone is true
+                input_device: if config.capture_microphone {
+                    Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() })
+                } else {
+                    None
+                },
                 ..Default::default()
             };
             
