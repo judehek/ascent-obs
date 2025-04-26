@@ -4,7 +4,7 @@
 
 #include "macros.h"
 
-namespace libowobs {
+namespace libascentobs {
 
 class TimerQueueTimer;
 struct TimerQueueTimerDelegate {

@@ -31,13 +31,13 @@ void DebugOutput(const char* pText, const char* pData) {
 #endif
 //-----------------------------------------------------------------------------
 
-namespace libowobs {
+namespace libascentobs {
 const char kThreadName[] = "std_communications_worker_thread";
 }
 
 //-----------------------------------------------------------------------------
 
-using namespace libowobs;
+using namespace libascentobs;
 
 //-----------------------------------------------------------------------------
 // static

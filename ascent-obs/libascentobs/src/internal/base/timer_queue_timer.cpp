@@ -2,11 +2,11 @@
 #include "base/timer_queue_timer.h"
 #include <windows.h>
 
-namespace libowobs {
+namespace libascentobs {
 
 };
 
-using namespace libowobs;
+using namespace libascentobs;
 
 //------------------------------------------------------------------------------
 TimerQueueTimer::TimerQueueTimer(TimerQueueTimerDelegate* delegate) :

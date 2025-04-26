@@ -181,7 +181,7 @@ namespace obs_control {
   };  // namespace obs_control
 
 using namespace obs_control;
-using namespace libowobs;
+using namespace libascentobs;
 
 //------------------------------------------------------------------------------
 OBS::OBS() :
@@ -277,7 +277,7 @@ OBS::~OBS() {
 
 //------------------------------------------------------------------------------
 bool OBS::Startup(OBSControlCommunications* communications,
-  libowobs::SharedThreadPtr command_thread) {
+  libascentobs::SharedThreadPtr command_thread) {
   blog(LOG_INFO, "starting up obs");
   if (!obs_startup("en-US", nullptr, nullptr)) {
     return false;
@@ -407,7 +407,7 @@ bool OBS::DoInitVideo(OBSData& video_settings,
 
   // performance stats timer
   if (!stats_time_.get()) {
-    stats_time_.reset(new libowobs::TimerQueueTimer(this));
+    stats_time_.reset(new libascentobs::TimerQueueTimer(this));
     stats_time_->Start(1000);
   }
 
@@ -525,7 +525,7 @@ bool OBS::InitVideoEncoder(OBSData& video_encoder_settings,
 }
 
 bool OBS::InitScene(OBSData& scene_settings, OBSData& error_result) {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
 
   if (!scene_.get()) {
     scene_.reset(new SceneContext(obs_scene_create("ascent obs scene")));
@@ -668,7 +668,7 @@ void OBS::CreateGenericSourcesFromCustomParam(obs_data_array_t* sources) {
 
 //------------------------------------------------------------------------------
 bool OBS::AddGameSource(OBSData& game_settings) {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   if (monitor_source_.get() && monitor_source_->force()) {
     blog(LOG_INFO, "game source rejected: capture monitor only");
     return false;
@@ -996,7 +996,7 @@ bool OBS::StopRecording(bool force) {
 
   blog(LOG_INFO, "Call stopping recoding stream");
   // sync with UpdateSourcesVisiblity
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   advanced_output_->StopRecording(force);
   blog(LOG_INFO, "Stopping recoding stream");
   return true;
@@ -1010,7 +1010,7 @@ bool OBS::StopReplay(bool force) {
 
   blog(LOG_INFO, "Call stop replay stream");
   // sync with UpdateSourcesVisiblity
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
 
   advanced_output_->StopReplay(force);
 
@@ -1033,7 +1033,7 @@ bool OBS::StopStreaming(bool force) {
   }
 
   // sync with UpdateSourcesVisiblity
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
 
   blog(LOG_INFO, "Call stop streaming");
   advanced_output_->StopStreaming(force);
@@ -1049,7 +1049,7 @@ void OBS::SplitVideo() {
   }
 
   // sync with UpdateSourcesVisiblity
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   advanced_output_->SplitVideo();
 }
 
@@ -1060,7 +1060,7 @@ bool OBS::StartCaptureReplay(OBSData& data, OBSData& error_result) {
   }
 
   // sync with UpdateSourcesVisiblity
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   return advanced_output_->StartCaptureReplay(data, error_result);
 }
 
@@ -1071,7 +1071,7 @@ bool OBS::StopCaptureReplay(OBSData& data, OBSData& error_result) {
   }
 
   // sync with UpdateSourcesVisiblity
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   return advanced_output_->StopCaptureReplay(data, error_result);
 }
 
@@ -1374,7 +1374,7 @@ void OBS::OnStatTimer() {
 
 //------------------------------------------------------------------------------
 void OBS::OnStopReplayTimer() {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   blog(LOG_WARNING, "Stop replay timeout");
   StopReplay(true);
 
@@ -1582,7 +1582,7 @@ bool OBS::HasDelayGameSource() {
 //------------------------------------------------------------------------------
 void OBS::UpdateSourcesVisiblity(bool game_in_foreground,
                                 bool is_minimized) {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   Source* new_visible_source = nullptr;
 
   auto save_game_in_foreground = game_in_foreground;
@@ -1667,7 +1667,7 @@ void OBS::UpdateSourcesVisiblity(bool game_in_foreground,
 
 //------------------------------------------------------------------------------
 bool OBS::IsActive() {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   if (advanced_output_ == nullptr)
     return false;
 
@@ -1826,7 +1826,7 @@ void OBS::HandleGameCaptureStateChanged(bool capturing,
   bool is_process_alive,
   bool compatibility_mode,
   std::string error) {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   blog(LOG_INFO, "Game capture state changed [capture:%d process alive:%d]",
     capturing, is_process_alive);
 
@@ -1971,7 +1971,7 @@ void OBS::OnGameQuite(bool force) {
   this->StopReplay(force);
   blog(LOG_WARNING, "replay capture is in progress. delay stop replay!");
   if (!stop_replay_timer_.get()) {
-    stop_replay_timer_.reset(new libowobs::TimerQueueTimer(this));
+    stop_replay_timer_.reset(new libascentobs::TimerQueueTimer(this));
   }
 
   stop_replay_timer_->Start(10000);
@@ -1979,7 +1979,7 @@ void OBS::OnGameQuite(bool force) {
 
 //------------------------------------------------------------------------------
 bool OBS::SetVisibleSourceName(OBSData& data) {
-  libowobs::CriticalSectionLock lock(visible_source_sync_);
+  libascentobs::CriticalSectionLock lock(visible_source_sync_);
   if (!current_visible_source_) {
     return false;
   }
@@ -1990,7 +1990,7 @@ bool OBS::SetVisibleSourceName(OBSData& data) {
 
 //------------------------------------------------------------------------------
 std::string OBS::GetVisibleSource() {
-  libowobs::CriticalSectionLock lock(visible_source_sync_);
+  libascentobs::CriticalSectionLock lock(visible_source_sync_);
   if (current_visible_source_ == nullptr)
     return "";
 
@@ -2000,7 +2000,7 @@ std::string OBS::GetVisibleSource() {
 //------------------------------------------------------------------------------
 void OBS::SetVisibleSource(Source* new_visible_source) {
   {
-    libowobs::CriticalSectionLock lock(visible_source_sync_);    
+    libascentobs::CriticalSectionLock lock(visible_source_sync_);    
     if (new_visible_source == current_visible_source_) {
       return;
     }

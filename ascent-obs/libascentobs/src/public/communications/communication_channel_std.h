@@ -32,7 +32,7 @@ void DebugOutput(const char* pText, const char* pData = NULL);
 
 //-----------------------------------------------------------------------------
 
-namespace libowobs {
+namespace libascentobs {
 
 //-----------------------------------------------------------------------------
 class CommunicationChannelStd : public ICommunicationChannel {

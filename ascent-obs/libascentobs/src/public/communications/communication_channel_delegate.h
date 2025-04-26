@@ -4,7 +4,7 @@
 #include <string>
 #include <windows.h>
 
-namespace libowobs {
+namespace libascentobs {
   struct CommunicationChannelDelegate;
 
   class ICommunicationChannel {

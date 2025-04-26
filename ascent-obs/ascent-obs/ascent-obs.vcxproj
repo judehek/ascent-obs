@@ -165,7 +165,7 @@
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_WINDOWS;DEBUG=1;_DEBUG=1;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;HAVE_OBSCONFIG_H;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./;../libowobs/src/public;$(SolutionDir)..\obs-studio\libobs;$(SolutionDir)..\obs-studio\build32\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./;../libascentobs/src/public;$(SolutionDir)..\obs-studio\libobs;$(SolutionDir)..\obs-studio\build32\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4127;4201</DisableSpecificWarnings>
     </ClCompile>
@@ -202,7 +202,7 @@
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_WINDOWS;DEBUG=1;_DEBUG=1;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;_HAVE_OBSCONFIG_H;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./;../libowobs/src/public;$(SolutionDir)..\obs-studio/libobs;$(SolutionDir)..\obs-studio\build64\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./;../libascentobs/src/public;$(SolutionDir)..\obs-studio/libobs;$(SolutionDir)..\obs-studio\build64\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4127;4201</DisableSpecificWarnings>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -244,7 +244,7 @@ xcopy /Y  $(TargetPath) $(SolutionDir)runtime\bin\64bit</Command>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;HAVE_OBSCONFIG_H;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./;../libowobs/src/public;$(SolutionDir)..\obs-studio/libobs;$(SolutionDir)..\obs-studio\build64\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./;../libascentobs/src/public;$(SolutionDir)..\obs-studio/libobs;$(SolutionDir)..\obs-studio\build64\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4127;4201</DisableSpecificWarnings>
     </ClCompile>
@@ -286,7 +286,7 @@ xcopy /Y  $(TargetPath) $(SolutionDir)runtime\bin\64bit</Command>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;_HAVE_OBSCONFIG_H;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./;../libowobs/src/public;$(SolutionDir)..\obs-studio/libobs;$(SolutionDir)..\obs-studio\build64\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./;../libascentobs/src/public;$(SolutionDir)..\obs-studio/libobs;$(SolutionDir)..\obs-studio\build64\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4127;4201</DisableSpecificWarnings>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -424,7 +424,7 @@ xcopy /Y  $(TargetPath) $(SolutionDir)runtime\bin\64bit</Command>
     <Image Include="logo.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\libowobs\libowobs.vcxproj">
+    <ProjectReference Include="..\libascentobs\libascentobs.vcxproj">
       <Project>{362dcf17-896a-4646-a10e-916e80dfd296}</Project>
     </ProjectReference>
   </ItemGroup>

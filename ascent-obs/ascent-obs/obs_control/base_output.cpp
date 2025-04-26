@@ -36,7 +36,7 @@ namespace obs_control {
 }
 
 
-using namespace libowobs;
+using namespace libascentobs;
 using namespace obs_control;
 
 BaseOutput::BaseOutput(AdvancedOutput* advanced_output)
@@ -71,7 +71,7 @@ void BaseOutput::TestStats() {
   }
 
   if (drawn && lagged && percentage_lagged) {
-    libowobs::CriticalSectionLock locker(sync_);
+    libascentobs::CriticalSectionLock locker(sync_);
     if (percentage_lagged - last_drop_frame_ratio_ >= 5.0) {
       last_drop_frame_ratio_ = percentage_lagged;
 
@@ -98,7 +98,7 @@ void BaseOutput::TestStats() {
   double percentage = double(skipped) / double(total_frames) * 100.0;
 
   if (diff > 10 && percentage >= 0.1f) {
-    libowobs::CriticalSectionLock locker(sync_);
+    libascentobs::CriticalSectionLock locker(sync_);
     if (!notify_high_cpu_) {
       blog(LOG_WARNING, "HighResourceUsage id:%d (%s): skipped %d (%f)",
         identifier_, Type(), diff, percentage);

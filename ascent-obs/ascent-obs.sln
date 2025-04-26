@@ -9,7 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "obs-studio", "obs-studio", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "x64", "x64", "{062AB262-F075-4271-9A5A-B6D5CC0E151C}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libowobs", "libowobs\libowobs.vcxproj", "{362DCF17-896A-4646-A10E-916E80DFD296}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libascentobs", "libascentobs\libascentobs.vcxproj", "{362DCF17-896A-4646-A10E-916E80DFD296}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libobs", "..\obs-studio\build_x64\libobs\libobs.vcxproj", "{A49CAC92-0B77-3E06-9BBF-3D772F92A819}"
 EndProject

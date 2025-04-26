@@ -22,7 +22,7 @@ namespace obs_control {
 };
 
 using namespace obs_control;
-using namespace libowobs;
+using namespace libascentobs;
 
 //------------------------------------------------------------------------------
 OBSControl::OBSControl() {
@@ -50,7 +50,7 @@ bool OBSControl::Init(OBSControlCommunications* communications) {
   }
 
   communications_ = communications;
-  command_thread_.reset(new libowobs::Thread());
+  command_thread_.reset(new libascentobs::Thread());
 
   if (!command_thread_->Start("obs_command_thread", true)) {
     blog(LOG_WARNING, "fail to start obs command thread");

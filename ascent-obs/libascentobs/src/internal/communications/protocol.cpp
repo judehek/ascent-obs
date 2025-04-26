@@ -1,7 +1,7 @@
 
 #include "communications/protocol.h"
 
-namespace libowobs {
+namespace libascentobs {
 namespace protocol {
 
 const char kCommandField[] = "cmd";

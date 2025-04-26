@@ -15,7 +15,7 @@ class CommandLine;
 
 //-----------------------------------------------------------------------------
 
-class Server : public libowobs::CommunicationChannelDelegate,
+class Server : public libascentobs::CommunicationChannelDelegate,
                       obs_control::OBSControlCommunications {
 public:
 
@@ -47,7 +47,7 @@ private:
 
 private:
 
-  std::unique_ptr<libowobs::ICommunicationChannel> communications_;
+  std::unique_ptr<libascentobs::ICommunicationChannel> communications_;
   MessageLoop message_loop_;
   std::unique_ptr<obs_control::OBSControl> obs_control_;
 

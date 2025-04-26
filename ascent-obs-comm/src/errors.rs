@@ -28,7 +28,7 @@ pub enum ObsError {
     InvalidEventData(String),
 
     // ExitStatus doesn't implement Clone, store Option<i32> (exit code)
-    #[error("OwObs process exited unexpectedly with status code: {0:?}")]
+    #[error("Ascent OBS process exited unexpectedly with status code: {0:?}")]
     ProcessExited(Option<i32>), // <--- Changed from Option<std::process::ExitStatus>
 
     #[error("Invalid configuration provided: {0}")]

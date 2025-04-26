@@ -3,7 +3,7 @@
 
 #include "critical_section.h"
 
-namespace libowobs {
+namespace libascentobs {
 
 class CriticalSectionLock {
 public:
@@ -25,6 +25,6 @@ public:
 private:
   CriticalSection& critical_section_;
 };
-}; // namespace libowobs
+}; // namespace libascentobs
 
 #endif // LIBASCENTOBS_BASE_CRITICAL_SECTION_LOCK_H_

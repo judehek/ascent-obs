@@ -3,7 +3,7 @@
 
 #include <windows.h>
 
-namespace libowobs {
+namespace libascentobs {
 
 class CriticalSection {
 public:
@@ -26,6 +26,6 @@ private:
   CRITICAL_SECTION critical_section_;
 };
 
-}; // namespace libowobs
+}; // namespace libascentobs
 
 #endif // LIBASCENTOBS_BASE_CRITICAL_SECTION_H_

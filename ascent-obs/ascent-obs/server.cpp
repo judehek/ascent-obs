@@ -13,7 +13,7 @@ const wchar_t kCmdLineParamChannel[] = L"channel";
 const wchar_t kCmdLineParamDebuggerAttach[] = L"debugger-attach";
 };
 
-using namespace libowobs;
+using namespace libascentobs;
 
 namespace {
 void PrintFileInfo() {
@@ -154,14 +154,14 @@ bool Server::Init(CommandLine* options) {
   std::string channel_id = options->GetSwitchValueASCII(kCmdLineParamChannel);
   if (!channel_id.empty()) {
     blog(LOG_INFO, "Channel: %s", channel_id.c_str());
-    communications_.reset(libowobs::CommunicationChannel::Create(
+    communications_.reset(libascentobs::CommunicationChannel::Create(
         channel_id.c_str(),
         false,   // master - false (we are the slave)
         this));  // delegate
   
   } else {
     blog(LOG_INFO, "Channel std");
-    communications_.reset(libowobs::CommunicationChannelStd::Create(
+    communications_.reset(libascentobs::CommunicationChannelStd::Create(
         false,   // master - false (we are the slave)
         this));  // delegate
   }

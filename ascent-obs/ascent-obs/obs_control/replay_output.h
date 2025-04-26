@@ -90,7 +90,7 @@ private:
   bool capturing_replay_;
   bool stop_replay_on_replay_ready_;
   std::string last_video_thumbnail_folder_;
-  libowobs::CriticalSection sync_;
+  libascentobs::CriticalSection sync_;
 }; // class ReplayOutput
 }; // namespace obs_control
 #endif //ASCENTOBS_OBS_OBS_CONTROL_REPLAY_OUTPUT_H_

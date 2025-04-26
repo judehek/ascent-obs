@@ -120,7 +120,7 @@ namespace obs_control {
 
 };
 
-using namespace libowobs;
+using namespace libascentobs;
 using namespace obs_control;
 
 RecordOutput::~RecordOutput() {

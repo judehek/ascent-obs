@@ -2,10 +2,10 @@
 #include "communications/receiver.h"
 #include "internal/win_ipc/pipe.h"
 
-namespace libowobs {
+namespace libascentobs {
 };
 
-using namespace libowobs;
+using namespace libascentobs;
 
 //------------------------------------------------------------------------------
 Receiver::Receiver(const char* channel_id, ReceiverDelegate* delegate) :

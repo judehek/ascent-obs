@@ -5,7 +5,7 @@
 #include "obs_control/settings.h"
 
 using namespace obs_control;
-using namespace libowobs;
+using namespace libascentobs;
 using namespace settings;
 
 //------------------------------------------------------------------------------

@@ -2,10 +2,10 @@
 #include "communications/sender.h"
 #include "internal/win_ipc/pipe.h"
 
-namespace libowobs {
+namespace libascentobs {
 };
 
-using namespace libowobs;
+using namespace libascentobs;
 
 //------------------------------------------------------------------------------
 Sender::Sender(const char* channel_id) :

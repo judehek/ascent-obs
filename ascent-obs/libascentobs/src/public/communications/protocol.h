@@ -2,7 +2,7 @@
 #ifndef LIBASCENTOBS_COMMUNICATIONS_PROTOCOL_H_
 #define LIBASCENTOBS_COMMUNICATIONS_PROTOCOL_H_
 
-namespace libowobs {
+namespace libascentobs {
 namespace protocol {
 
 extern const char kCommandField[];

@@ -9,7 +9,7 @@
 #include "../base/macros.h"
 struct ipc_pipe_server;
 
-namespace libowobs {
+namespace libascentobs {
 
 struct ReceiverDelegate {
   virtual void OnDisconnected() = 0;

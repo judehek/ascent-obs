@@ -78,7 +78,7 @@ protected:
   static bool IsUpdateDriverError(const char* error);
 
 protected:
-  libowobs::CriticalSection sync_;
+  libascentobs::CriticalSection sync_;
   OBSOutput output_;
   AdvancedOutput* advanced_output_; // owner
   int identifier_;

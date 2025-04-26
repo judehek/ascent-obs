@@ -11,7 +11,7 @@
 
 #include "macros.h"
 
-namespace libowobs {
+namespace libascentobs {
 
 class Thread {
 public:

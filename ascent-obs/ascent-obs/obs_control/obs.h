@@ -33,14 +33,14 @@ class OBSAudioSourceControl;
 class OBS : public AdvancedOutputDelegate,
             public GameCaptureSourceDelegate,
             public OBSDisplayTester::Delegate,
-            public libowobs::TimerQueueTimerDelegate {
+            public libascentobs::TimerQueueTimerDelegate {
 public:
   OBS();
   virtual ~OBS();
 
 public:
   bool Startup(OBSControlCommunications* communications,
-               libowobs::SharedThreadPtr command_thread);
+               libascentobs::SharedThreadPtr command_thread);
 
   bool Recording() const;
 
@@ -203,8 +203,8 @@ private:
   virtual void OnColoredTextedDetected(OBSDisplayTester::TestSouceType type);
   virtual Source* GetSource(OBSDisplayTester::TestSouceType source_type);
 
-  //libowobs::TimerQueueTimerDelegate
-  virtual void OnTimer(libowobs::TimerQueueTimer* timer);
+  //libascentobs::TimerQueueTimerDelegate
+  virtual void OnTimer(libascentobs::TimerQueueTimer* timer);
 
   void OnGameQuite(bool force);
 
@@ -277,7 +277,7 @@ private:
   // NOTE(twolf): do not call obs_shutdown explicitly, as it is called
   // implicitly by ~OBSContext
   OBSControlCommunications* communications_;
-  libowobs::SharedThreadPtr command_thread_;
+  libascentobs::SharedThreadPtr command_thread_;
   std::unique_ptr<AdvancedOutput> advanced_output_;
 
   std::unique_ptr<SceneContext> scene_;
@@ -312,12 +312,12 @@ private:
 
   std::unique_ptr<OBSDisplayTester> display_tester_;
 
-  std::unique_ptr<libowobs::TimerQueueTimer> stats_time_;
-  std::unique_ptr<libowobs::TimerQueueTimer> stop_replay_timer_;
+  std::unique_ptr<libascentobs::TimerQueueTimer> stats_time_;
+  std::unique_ptr<libascentobs::TimerQueueTimer> stop_replay_timer_;
 
-  libowobs::CriticalSection sync_;
+  libascentobs::CriticalSection sync_;
 
-  libowobs::CriticalSection visible_source_sync_;
+  libascentobs::CriticalSection visible_source_sync_;
 
   bool shoutdown_on_stop_;
 

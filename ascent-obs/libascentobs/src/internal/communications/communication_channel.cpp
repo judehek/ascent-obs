@@ -5,7 +5,7 @@
 #include <windows.h>
 #include <string>
 
-namespace libowobs {
+namespace libascentobs {
 const char kChannelIdMasterFormat[] = "%s_master";
 const char kChannelIdSlaveFormat[] = "%s_slave";
 const char kThreadName[] = "communications_worker_thread";
@@ -21,7 +21,7 @@ const uint32_t kHandshakeSignature = 0xdeadbeef;
 
 }
 
-using namespace libowobs;
+using namespace libascentobs;
 
 //------------------------------------------------------------------------------
 // static

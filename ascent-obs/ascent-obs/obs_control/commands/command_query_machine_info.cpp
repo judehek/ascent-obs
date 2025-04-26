@@ -32,7 +32,7 @@ void CommandQueryMachineInfo::Perform(int identifier, OBSData& data) {
   __super::obs_->RetreiveAudioDevices(kInputAudioSource, 
                                       audio_input_devices);
   obs_data_set_array(result, 
-                     libowobs::protocol::kAudioInputDevices, 
+                     libascentobs::protocol::kAudioInputDevices, 
                      audio_input_devices);
   
   // get output audio devices
@@ -41,7 +41,7 @@ void CommandQueryMachineInfo::Perform(int identifier, OBSData& data) {
   __super::obs_->RetreiveAudioDevices(kOutputAudioSource,
                                       audio_output_devices);
   obs_data_set_array(result, 
-                     libowobs::protocol::kAudioOutputDevices, 
+                     libascentobs::protocol::kAudioOutputDevices, 
                      audio_output_devices);
 
   // get video encoders
@@ -51,14 +51,14 @@ void CommandQueryMachineInfo::Perform(int identifier, OBSData& data) {
   blog(LOG_INFO, "QueryMachine: retrieve supported video encoders");
   __super::obs_->RetreiveSupportedVideoEncoders(video_encoders);
   obs_data_set_array(result, 
-                     libowobs::protocol::kVideoEncoders, 
+                     libascentobs::protocol::kVideoEncoders, 
                      video_encoders);
 
-  obs_data_set_bool(result, libowobs::protocol::kWinrtCaptureSupported,
+  obs_data_set_bool(result, libascentobs::protocol::kWinrtCaptureSupported,
                     __super::obs_->IsWinrtCaptureSupported());
 
   blog(LOG_INFO, "QueryMachine: sending result");
 
-  __super::communications_->Send(libowobs::protocol::events::QUERY_MACHINE_INFO, 
+  __super::communications_->Send(libascentobs::protocol::events::QUERY_MACHINE_INFO, 
                                  result);
 }

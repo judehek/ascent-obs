@@ -209,7 +209,7 @@ static void convert_28_1_encoder_setting(const char* encoder,
 };  // namespace obs_control
 
 using namespace obs_control;
-using namespace libowobs;
+using namespace libascentobs;
 
 //------------------------------------------------------------------------------
 AdvancedOutput::AdvancedOutput(AdvancedOutputDelegate* delegate) :

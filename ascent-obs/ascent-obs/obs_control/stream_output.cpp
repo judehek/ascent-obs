@@ -95,7 +95,7 @@ namespace obs_control {
   }
 };
 
-using namespace libowobs;
+using namespace libascentobs;
 using namespace obs_control;
 
 StreamOutput::StreamOutput(AdvancedOutput* advanced_output)

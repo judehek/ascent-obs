@@ -9,7 +9,7 @@
 #include "../base/macros.h"
 struct ipc_pipe_client;
 
-namespace libowobs {
+namespace libascentobs {
 
 class Sender {
 public:

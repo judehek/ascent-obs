@@ -1,7 +1,7 @@
 
 #include "base/thread.h"
 
-namespace libowobs {
+namespace libascentobs {
 
 const int kStopThreadTimeoutInSeconds = 10;
 const DWORD kStopThreadTimeoutMS = 10000;
@@ -20,7 +20,7 @@ const DWORD MS_VC_EXCEPTION = 0x406D1388;
 #pragma pack(pop)
 };
 
-using namespace libowobs;
+using namespace libascentobs;
 
 //-----------------------------------------------------------------------------
 Thread::Thread() :

@@ -7,7 +7,7 @@
 #include "obs_control/commands/command.h"
 #include "obs_control/obs.h"
 
-namespace libowobs {
+namespace libascentobs {
   class Thread;
 }
 
@@ -33,7 +33,7 @@ private:
   std::unique_ptr<OBS> obs_;
   OBSControlCommunications* communications_;
 
-  std::shared_ptr<libowobs::Thread> command_thread_;
+  std::shared_ptr<libascentobs::Thread> command_thread_;
 
   typedef std::map<int, Command*> CommandsMap;
   CommandsMap commands_map_;

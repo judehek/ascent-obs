@@ -225,7 +225,7 @@ namespace obs_control {
   }
 };
 
-using namespace libowobs;
+using namespace libascentobs;
 using namespace obs_control;
 
 ReplayOutput::ReplayOutput(AdvancedOutput* advanced_output)
@@ -337,7 +337,7 @@ bool ReplayOutput::Start(int identifier,
 }
 
 bool ReplayOutput::Start(OBSData& error_result) {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   if (identifier_ <= 0) {
     blog(LOG_ERROR, "replay start: no pending replay");
     obs_data_set_int(error_result,
@@ -358,7 +358,7 @@ bool ReplayOutput::Start(OBSData& error_result) {
 }
 
 bool ReplayOutput::DoStart(OBSData& error_result) {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
   //MessageBox(NULL, L"AAAAA", L"AAAAA", 0);
 
   if (identifier_ == -1) {
@@ -402,7 +402,7 @@ bool ReplayOutput::DoStart(OBSData& error_result) {
 }
 
 void ReplayOutput::Stop(bool force) {
-  libowobs::CriticalSectionLock locker(sync_);
+  libascentobs::CriticalSectionLock locker(sync_);
 
   // in case we still not capture game frame (delay start)
   if (!Active()) {

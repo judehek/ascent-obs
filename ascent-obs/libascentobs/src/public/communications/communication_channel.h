@@ -13,7 +13,7 @@
 #include "protocol.h"
 #include "communication_channel_delegate.h"
 
-namespace libowobs {
+namespace libascentobs {
 //------------------------------------------------------------------------------
 class CommunicationChannel : public ICommunicationChannel,
                              public ReceiverDelegate,
