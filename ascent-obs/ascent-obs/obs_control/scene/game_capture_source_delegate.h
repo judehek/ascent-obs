@@ -1,8 +1,4 @@
-/*******************************************************************************
-* Overwolf OBS Game Capture source delegate
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
+
 #ifndef ASCENTOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_DELEGATE_H_
 #define ASCENTOBS_OBS_CONTROL_GAME_CAPTURE_SOURCE_DELEGATE_H_
 #include "source.h"

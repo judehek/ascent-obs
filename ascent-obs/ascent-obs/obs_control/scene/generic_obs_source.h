@@ -1,9 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS GenericObsSource
-*
-* Copyright (c) 2020 Overwolf Ltd.
-*******************************************************************************/
-
 #ifndef ASCENTOBS_OBS_CONTROL_GENERIC_OBS_SOURCE_H_
 #define ASCENTOBS_OBS_CONTROL_GENERIC_OBS_SOURCE_H_
 

@@ -929,7 +929,7 @@ void WASAPISource::Initialize()
 				      window_class.c_str(), title.c_str(),
 				      executable.c_str());
 
-		// overwolf - try by executable name only
+		// ASCENT_EDIT_START: Carried over (try by executable name only)
 		DWORD dwProcessId = 0;
 		if (!hwnd && window_class.empty() && title.empty()) {
 		   dwProcessId = ms_get_process_id(executable.c_str());
@@ -938,6 +938,7 @@ void WASAPISource::Initialize()
 		     throw "Failed to executable pid";
 		   }
 		}
+		// ASCENT_EDIT_END: Carried over (try by executable name only)
 
 		if (!hwnd && dwProcessId == 0)
 			throw "Failed to find window";

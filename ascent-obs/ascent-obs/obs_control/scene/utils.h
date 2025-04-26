@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Scene utils
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
 #ifndef ASCENTOBS_OBS_CONTROL_UTILS_H_
 #define ASCENTOBS_OBS_CONTROL_UTILS_H_
 

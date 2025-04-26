@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Game Capture source
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
 #ifndef ASCENTOBS_OBS_CONTROL_GAZE_OVERLAY_SOURCE_H_
 #define ASCENTOBS_OBS_CONTROL_GAZE_OVERLAY_SOURCE_H_
 

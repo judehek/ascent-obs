@@ -3,7 +3,7 @@
 
 //-----------------------------------------------------------------------------
 
-#define OBS_SUB_KEY   "SOFTWARE\\OverwolfQA\\OBS"
+#define OBS_SUB_KEY   "SOFTWARE\\AscentQA\\OBS"
 #define ENCODER_CODE  "EncoderCode"
 
 //-----------------------------------------------------------------------------

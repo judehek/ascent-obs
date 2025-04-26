@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
 #include "obs_control/replay_output.h"
 #include "obs_control/advanced_output.h"
 #include "obs_utils.h"

@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
 #include "obs_control/commands/command_set_brb.h"
 #include "obs_control/obs_utils.h"
 #include "obs_control/obs.h"

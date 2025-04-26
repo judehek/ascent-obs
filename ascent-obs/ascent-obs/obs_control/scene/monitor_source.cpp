@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Monitor Source
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
 #include "obs_control/scene/monitor_source.h"
 #include <map>
 #include <windows.h>

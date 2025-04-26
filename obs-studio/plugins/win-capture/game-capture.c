@@ -98,7 +98,7 @@
 #define DEFAULT_RETRY_INTERVAL 2.0f
 #define ERROR_RETRY_INTERVAL 4.0f
 
-// overwolf changes
+// ASCENT_EDIT_START: Carried over (empty)
 #include <Shlobj.h>
 char *get_common_program_file_module(const char *file)
 {
@@ -125,7 +125,7 @@ char *get_common_program_file_module(const char *file)
 
 	return output.array;
 }
-// end overwolf changes
+// ASCENT_EDIT_END: Carried over (empty)
 
 enum capture_mode {
 	CAPTURE_MODE_ANY,
@@ -404,7 +404,7 @@ static inline float hook_rate_to_float(enum hook_rate rate)
 	}
 }
 
-// overwolf changes
+// ASCENT_EDIT_START: Carried over (empty)
 static void stop_capture_with_error(struct game_capture *gc, const char *error)
 {
 	if (&gc->pipe) {
@@ -427,7 +427,7 @@ static void stop_capture_with_error(struct game_capture *gc, const char *error)
 		gc->app_sid = NULL;
 	}
 
-	// TODO(bFox): do we really need this? (need to chage sht->shm)
+	// TODO: do we really need this? (need to change sht->shm)
 	if (gc->config.mode == CAPTURE_MODE_PROCESS && gc->global_hook_info) {
 		gc->global_hook_info->ready_to_capture = false;
 	}
@@ -507,7 +507,7 @@ static void stop_capture(struct game_capture *gc)
 {
 	stop_capture_with_error(gc, NULL);
 }
-// end overwolf changes
+// ASCENT_EDIT_END: Carried over (empty)
 
 static inline void free_config(struct game_capture_config *config)
 {
@@ -889,13 +889,13 @@ static inline bool is_64bit_process(HANDLE process)
 {
 	BOOL x86 = true;
 	if (is_64bit_windows()) {
-		// overwolf changes
+		// ASCENT_EDIT_START: Carried over (empty)
 		if (process == NULL) {
 			blog(LOG_WARNING, "[game-capture] Game handle is null. mark as 64 bit");
 			return true;
 			
 		}
-		// end overwolf changes
+		// ASCENT_EDIT_END: Carried over (empty)
 		bool success = !!IsWow64Process(process, &x86);
 		if (!success) {
 			return false;
@@ -1137,7 +1137,7 @@ static inline bool hook_direct(struct game_capture *gc,
 	return true;
 }
 
-// overwolf changes
+// ASCENT_EDIT_START: Carried over (empty)
 static inline bool create_inject_process_shell(struct game_capture *gc,
 					       wchar_t *inject_path_w,
 					       wchar_t *command_line_w)
@@ -1159,7 +1159,7 @@ static inline bool create_inject_process_shell(struct game_capture *gc,
 	}
 	return true;
 }
-// end overwolf
+// ASCENT_EDIT_END: Carried over (empty)
 
 static inline bool create_inject_process(struct game_capture *gc,
 					 const char *inject_path,
@@ -1187,7 +1187,7 @@ static inline bool create_inject_process(struct game_capture *gc,
 	si.cb = sizeof(si);
 
 	if (!use_shell_execute) {
-		// overwolf: allways send the process Id
+		// ASCENT_EDIT_START: Carried over (always send the process ID)
 		swprintf(command_line_w, 4096, L"\"%s\" \"%s\" %lu %lu %lu",
 			 inject_path_abs_w, hook_path_abs_w,
 			 (unsigned long)anti_cheat,
@@ -1241,7 +1241,7 @@ static inline bool inject_hook(struct game_capture *gc)
 
 	//MessageBoxA(0, "inject_hook helper", "win-capture", 0);
 
-	// overwolf changes
+	// ASCENT_EDIT_START: Carried over (empty)
 	const int kMaxInjectionHooksRetries = 30;
 	if (gc->injection_retries++ >= kMaxInjectionHooksRetries) {
 		// log and notify error only once!
@@ -1251,7 +1251,7 @@ static inline bool inject_hook(struct game_capture *gc)
 		}
 		return false;
 	}
-	// end overwolf
+	// ASCENT_EDIT_END: Carried over (empty)
 
 	bool use_shell_execute = true;
 	inject_path = get_common_program_file_module(
@@ -1296,12 +1296,12 @@ static inline bool inject_hook(struct game_capture *gc)
 cleanup:
 	bfree(inject_path);
 	bfree(hook_path);
-	// overwolf changes
+	// ASCENT_EDIT_START: Carried over (empty)
 	if (!success && gc->config.mode == CAPTURE_MODE_PROCESS) {
 		warn("can't create hook process, terminating capture");
 		stop_capture_with_error(gc, "create_inject_helper_error");
 	}
-	// end overwolf changes
+	// ASCENT_EDIT_END: Carried over (empty)
 	return success;
 }
 
@@ -2215,11 +2215,12 @@ static void game_capture_tick(void *data, float seconds)
 			10.0f * hook_rate_to_float(gc->config.hook_rate);
 	}
 
-	// Overwolf: not controlled by obs
+	// ASCENT_EDIT_START: Carried over (not controlled by OBS)
 	//if (gc->hook_stop && object_signalled(gc->hook_stop)) {
 	//	debug("hook stop signal received");
 	//	stop_capture(gc);
 	//}
+	// ASCENT_EDIT_END: Carried over (not controlled by OBS)
 	if (gc->active && deactivate) {
 		info("stop capture deactivate: %d", gc->process_id);
 		stop_capture(gc);
@@ -2239,13 +2240,13 @@ static void game_capture_tick(void *data, float seconds)
 		if (exit_code != 0) {
 			warn("inject process failed: %ld", (long)exit_code);
 			gc->error_acquiring = true;
-			// overwolf changes
+			// ASCENT_EDIT_START: Carried over (empty)
 			if (gc->config.mode == CAPTURE_MODE_PROCESS) {
 				warn("fail to hook game, terminating capture");
 				stop_capture_with_error(gc,
 							"inject_helper_error");
 			}
-			// end overwolf changes
+			// ASCENT_EDIT_END: Carried over (empty)
 
 		} else if (!gc->capturing) {
 			gc->retry_interval =

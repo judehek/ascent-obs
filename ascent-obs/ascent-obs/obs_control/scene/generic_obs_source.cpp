@@ -1,9 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS GenericObsSource
-*
-* Copyright (c) 2020 Overwolf Ltd.
-*******************************************************************************/
-
 #include "obs_control/scene/generic_obs_source.h"
 #include <map>
 #include <vector>

@@ -1,8 +1,3 @@
-/*****  **************************************************************************
-* Overwolf OBS Game Capture source
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
 #include "obs_control/scene/game_capture_source.h"
 #include "obs_control/settings.h"
 #include <windows.h>

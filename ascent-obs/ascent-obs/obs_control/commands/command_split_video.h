@@ -1,8 +1,4 @@
-/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2019 Overwolf Ltd.
-*******************************************************************************/
+
 #ifndef ASCENTOBS_OBS_CONTROL_COMMANDS_COMMAND_SPLIT_VIDEO_H_
 #define ASCENTOBS_OBS_CONTROL_COMMANDS_COMMAND_SPLIT_VIDEO_H_
 

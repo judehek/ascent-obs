@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2017 Overwolf Ltd.
-*******************************************************************************/
 #ifndef ASCENT_OBS_MESSAGE_LOOP_H_
 #define ASCENT_OBS_MESSAGE_LOOP_H_
 

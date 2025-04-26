@@ -1,0 +1,9 @@
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\base\thread.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\thread.obj
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\base\timer_queue_timer.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\timer_queue_timer.obj
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\communications\communication_channel.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\communication_channel.obj
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\communications\communication_channel_std.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\communication_channel_std.obj
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\communications\protocol.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\protocol.obj
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\communications\receiver.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\receiver.obj
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\communications\sender.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\sender.obj
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\win_ipc\pipe-windows-std.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\pipe-windows-std.obj
+C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\src\internal\win_ipc\pipe-windows.cpp;C:\Users\judeb\source\repos\ascent-obs\ow-obs\libowobs\x64\Release\pipe-windows.obj

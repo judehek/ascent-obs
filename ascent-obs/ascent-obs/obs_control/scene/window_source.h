@@ -1,9 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Window Source
-*
-* Copyright (c) 2021 Overwolf Ltd.
-*******************************************************************************/
-
 #ifndef ASCENTOBS_OBS_CONTROL_WINDOW_SOURCE_H_
 #define ASCENTOBS_OBS_CONTROL_WINDOW_SOURCE_H_
 

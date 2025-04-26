@@ -1,8 +1,4 @@
-/*******************************************************************************
-* Overwolf OBS BRB Image source
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
+
 #include "obs_control/scene/brb_source.h"
 #include <string>
 #include <util/platform.h>

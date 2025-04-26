@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Logger
-*
-* Copyright (c) 2017 Overwolf Ltd.
-*******************************************************************************/
 #ifndef ASCENTOBS_LOGGER_H_
 #define ASCENTOBS_LOGGER_H_
 #include <obs-data.h>

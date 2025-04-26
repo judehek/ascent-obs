@@ -64,12 +64,12 @@ static inline int64_t packet_dts_usec(struct encoder_packet *packet)
 	return packet->dts * MICROSECOND_DEN / packet->timebase_den;
 }
 
-// overwolf changes
+// ASCENT_EDIT_START: Carried over (empty)
 static inline int64_t packet_pts_usec(struct encoder_packet *packet)
 {
 	return packet->pts * MICROSECOND_DEN / packet->timebase_den;
 }
-// end overwolf changes
+// ASCENT_EDIT_END: Carried over (empty)
 
 struct tick_callback {
 	void (*tick)(void *param, float seconds);
@@ -1313,7 +1313,9 @@ struct obs_encoder {
 	const char *profile_encoder_encode_name;
 	char *last_error_message;
 	
-	char *last_error_code;	// overwolf changes
+	// ASCENT_EDIT_START: Carried over (empty)
+	char *last_error_code;
+	// ASCENT_EDIT_END: Carried over (empty)
 
 	/* reconfigure encoder at next possible opportunity */
 	bool reconfigure_requested;

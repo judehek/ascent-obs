@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Window Source
-*
-* Copyright (c) 2021 Overwolf Ltd.
-*******************************************************************************/
 #include "obs_control/scene/window_source.h"
 #include <map>
 #include <windows.h>

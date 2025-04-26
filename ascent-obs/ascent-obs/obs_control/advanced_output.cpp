@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
 #include "obs_control/advanced_output.h"
 
 #include <algorithm>
@@ -462,7 +457,7 @@ bool AdvancedOutput::ResetOutputSetting(OBSData& output_settings,
   obs_output_t* file_output = file_output_;
   if (file_output == nullptr) {
     file_output_ = obs_output_create(file_outout_id,
-      "Overwolf Output",
+      "Ascent Output",
       nullptr,
       nullptr);
 

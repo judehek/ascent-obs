@@ -597,7 +597,7 @@ bool os_file_exists(const char *path)
 	return hFind != INVALID_HANDLE_VALUE;
 }
 
-// overwolf
+// ASCENT_EDIT_START: Carried over (empty)
 bool os_file_exists_w(const wchar_t *path_utf16)
 {
 	if (!path_utf16) {
@@ -611,6 +611,7 @@ bool os_file_exists_w(const wchar_t *path_utf16)
 
 	return hFind != INVALID_HANDLE_VALUE;
 }
+// ASCENT_EDIT_END: Carried over (empty)
 
 size_t os_get_abs_path(const char *path, char *abspath, size_t size)
 {
@@ -1115,12 +1116,13 @@ bool is_arm64_windows(void)
 	return true;
 #else
 	return false;
-	// Overwolf
+	// ASCENT_EDIT_START: Carried over (empty)
 	//USHORT processMachine;
 	//USHORT nativeMachine;
 	//bool result = IsWow64Process2(GetCurrentProcess(), &processMachine,
 	//			      &nativeMachine);
 	//return (result && (nativeMachine == IMAGE_FILE_MACHINE_ARM64));
+	// ASCENT_EDIT_END: Carried over (empty)
 #endif
 }
 

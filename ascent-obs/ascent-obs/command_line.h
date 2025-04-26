@@ -12,7 +12,7 @@
 // There is a singleton read-only CommandLine that represents the command line
 // that the current process was started with.  It must be initialized in main().
 
-// NOTE(Overwolf): updated to remove unwanted dependencies and cross-platform
+// ASCENT_EDIT_START: Carried over (updated to remove unwanted dependencies and cross-platform)
 // support
 #ifndef BASE_COMMAND_LINE_H_
 #define BASE_COMMAND_LINE_H_

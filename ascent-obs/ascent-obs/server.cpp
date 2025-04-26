@@ -1,9 +1,3 @@
-/******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2017 Overwolf Ltd.
-******************************************************************************/
-
 #include "server.h"
 #include "obs_control/obs_utils.h"
 #include "command_line.h"

@@ -1,8 +1,3 @@
-/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2017 Overwolf Ltd.
-*******************************************************************************/
 #ifndef ASCENTOBS_OBS_CONTROL_SETTINGS_H_
 #define ASCENTOBS_OBS_CONTROL_SETTINGS_H_
 

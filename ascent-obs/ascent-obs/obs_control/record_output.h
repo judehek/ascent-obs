@@ -1,8 +1,3 @@
-/*****  **************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
 #ifndef c
 #define ASCENTOBS_OBS_OBS_CONTROL_RECORD_OUTPUT_H_
 #include "base_output.h"

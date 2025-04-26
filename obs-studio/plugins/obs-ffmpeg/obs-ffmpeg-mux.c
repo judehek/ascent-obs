@@ -33,7 +33,8 @@
 #define info(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
 #define error(format, ...) do_log(LOG_ERROR, format, ##__VA_ARGS__)
 
-#define MINIMUM_FREE_DISKSPACE_LIMIT L"SOFTWARE\\OverwolfQA\\OBS"
+// TODO
+#define MINIMUM_FREE_DISKSPACE_LIMIT L"SOFTWARE\\AscentQA\\OBS"
 #define MAX_REPLAY_TIMEOUT_SECONDS 60
 // arbitrarily decided on 50 MB
 static int64_t kMinFreeDiskspaceBytes = 52428800;

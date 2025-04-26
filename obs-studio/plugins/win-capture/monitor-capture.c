@@ -53,7 +53,7 @@ static BOOL CALLBACK enum_monitor(HMONITOR handle, HDC hdc, LPRECT rect,
 {
 	struct monitor_info *monitor = (struct monitor_info *)param;
 
-	// overwolf - use by monitor_id
+	// ASCENT_EDIT_START: Carried over (use by monitor_id)
 	if (strlen(monitor->desired_monitor_id) > 0) {
 		MONITORINFOEXA mi;
 		mi.cbSize = sizeof(mi);
@@ -72,6 +72,7 @@ static BOOL CALLBACK enum_monitor(HMONITOR handle, HDC hdc, LPRECT rect,
 			}
 		}
 	}
+	// ASCENT_EDIT_END: Carried over (use by monitor_id)
 
 	if (monitor->desired_handle != 0) {
 		if (monitor->cur_id == 0 ||

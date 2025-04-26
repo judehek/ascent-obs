@@ -1,8 +1,4 @@
-/*******************************************************************************
-* Overwolf OBS BRB Image source
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
+
 #ifndef ASCENTOBS_OBS_CONTROL_BRB_SOURCE_H_
 #define ASCENTOBS_OBS_CONTROL_BRB_SOURCE_H_
 

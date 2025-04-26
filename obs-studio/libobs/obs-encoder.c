@@ -1321,10 +1321,10 @@ void send_off_encoder_packet(obs_encoder_t *encoder, bool success,
 				packet_dts_usec(pkt) - encoder->offset_usec;
 		pkt->sys_dts_usec = pkt->dts_usec;
 
-		// overwolf changes
+		// ASCENT_EDIT_START: Carried over (empty)
 		pkt->sys_pts_usec =
 			encoder->start_ts / 1000 + packet_pts_usec(pkt);
-		// end overwolf changes
+		// ASCENT_EDIT_END: Carried over (empty)
 
 		pthread_mutex_lock(&encoder->pause.mutex);
 		pkt->sys_dts_usec += encoder->pause.ts_offset / 1000;

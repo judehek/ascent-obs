@@ -1,8 +1,4 @@
-/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2018 Overwolf Ltd.
-*******************************************************************************/
+
 #ifndef ASCENTOBS_OBS_CONTROL_COMMANDS_COMMAND_STOP_REPLAY_CAPTURE_H_
 #define ASCENTOBS_OBS_CONTROL_COMMANDS_COMMAND_STOP_REPLAY_CAPTURE_H_
 

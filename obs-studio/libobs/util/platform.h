@@ -120,7 +120,9 @@ EXPORT char *os_get_program_data_path_ptr(const char *name);
 EXPORT char *os_get_executable_path_ptr(const char *name);
 
 EXPORT bool os_file_exists(const char *path);
-EXPORT bool os_file_exists_w(const wchar_t *path); // overwolf
+// ASCENT_EDIT_START: Carried over (empty)
+EXPORT bool os_file_exists_w(const wchar_t *path);
+// ASCENT_EDIT_END: Carried over (empty)
 
 EXPORT size_t os_get_abs_path(const char *path, char *abspath, size_t size);
 EXPORT char *os_get_abs_path_ptr(const char *path);

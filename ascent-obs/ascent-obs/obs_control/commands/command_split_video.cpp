@@ -1,8 +1,4 @@
-/*******************************************************************************
-* Overwolf OBS Controller
-*
-* Copyright (c) 2019 Overwolf Ltd.
-*******************************************************************************/
+
 #include "obs_control/commands/command_split_video.h"
 #include "obs_control/obs_utils.h"
 #include "obs_control/obs.h"
