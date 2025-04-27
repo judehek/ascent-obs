@@ -4,7 +4,7 @@
 use crate::communication::ObsClient; // Assumes ObsClient is now the synchronous version
 use crate::errors::ObsError;
 use crate::types::{
-    AudioDeviceSettings, AudioExtraOptions, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_RECORDING_STOPPED, EVT_REPLAY_CAPTURE_VIDEO_STARTED, EVT_REPLAY_STARTED, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
+    AudioDeviceSettings, AudioExtraOptions, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_RECORDING_STARTED, EVT_RECORDING_STOPPED, EVT_REPLAY_CAPTURE_VIDEO_STARTED, EVT_REPLAY_STARTED, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
 };
 use crate::RecordingConfig;
 use log::{debug, error, info, warn};
@@ -130,7 +130,7 @@ impl Recorder {
             identifier,
             start_payload,
             Duration::from_secs(20), // Adjust timeout as needed
-            None, // No specific expected event type
+            Some(EVT_RECORDING_STARTED), // No specific expected event type
             vec![EVT_ERR], // Blacklist the error event type
             deserialize_start_response,
         )?;
