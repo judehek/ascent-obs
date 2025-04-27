@@ -275,7 +275,9 @@ impl Recorder {
 
     /// Saves the current replay buffer to the specified file (Synchronous).
     /// Blocks while sending commands and potentially restarting the buffer.
-    pub fn save_replay_buffer(&self, output_path: &str) -> Result<(), ObsError> {
+    pub fn save_replay_buffer(&self, output_path: impl Into<PathBuf>) -> Result<(), ObsError> {
+        let output_path = output_path.into();
+
         let (current_replay_id, _path, _buffer_duration) = { // Scope for the lock
             let mut active_replay_id_guard = self.active_replay_buffer_id.lock().map_err(|_| ObsError::InternalError("Mutex poisoned".to_string()))?;
     
@@ -286,8 +288,8 @@ impl Recorder {
     
             let replay_id = *active_replay_id_guard.as_ref().unwrap();
     
-            // Use the provided path directly
-            let path = output_path.to_string();
+            // Use the provided path
+            let path = output_path.to_string_lossy().into_owned();
     
             let duration_ms = self.config.replay_buffer_seconds
                 .ok_or_else(|| {
