@@ -20,7 +20,7 @@ type WaiterRegistry = HashMap<i32, WaiterInfo>;
 struct WaiterInfo {
     sender: Sender<Result<EventNotification, ObsError>>,
     deadline: Instant,
-    expected_event_type: i32, // Store the expected type for better error reporting
+    expected_event_type: Option<i32>, // Store the expected type for better error reporting
     error_event_types: Vec<i32>, // New field: list of event types that indicate errors
 }
 
@@ -104,9 +104,9 @@ impl EventManager {
                         debug!("Event for waiter id {} was pending. Forwarding immediately.", identifier);
                         
                         // Check if this is the expected event type
-                        if event.event == info.expected_event_type {
+                        if info.expected_event_type.map_or(true, |expected| event.event == expected) {
                             let _ = info.sender.send(Ok(event)); // Ignore error if receiver dropped
-                        } 
+                        }
                         // Check if this is an error event type
                         else if info.error_event_types.contains(&event.event) {
                             warn!("Pending event for id {} had error type {}. Sending error.", 
@@ -117,8 +117,8 @@ impl EventManager {
                         }
                         // Otherwise, this is an unexpected event - log it and continue waiting
                         else {
-                            warn!("Pending event for id {} had type {} but expected {}. Continuing to wait.", 
-                                  identifier, event.event, info.expected_event_type);
+                            warn!("Pending event for id {} had type {} but expected {:?}. Continuing to wait.", 
+                            identifier, event.event, info.expected_event_type);
                             // Put the waiter in the waiting map
                             waiters.insert(identifier, info);
                             // We might want to save this event somewhere if it's important,
@@ -156,7 +156,7 @@ impl EventManager {
                             debug!("Found waiter for identifier {}. Processing event.", identifier);
                             
                             // Check if the event type matches expectation
-                            if event_type == waiter_info.expected_event_type {
+                            if waiter_info.expected_event_type.map_or(true, |expected| event_type == expected) {
                                 // Send the successful event
                                 if waiter_info.sender.send(Ok(event.clone())).is_err() {
                                     warn!("Waiter for id {} disconnected before receiving event.", identifier);
@@ -176,8 +176,8 @@ impl EventManager {
                             // Otherwise, this is an unexpected event - log it and continue waiting
                             else {
                                 // Type mismatch but not in error list - log and put the waiter back
-                                warn!("Waiter for id {} expected type {} but got {}. Continuing to wait.", 
-                                      identifier, waiter_info.expected_event_type, event_type);
+                                warn!("Waiter for id {} expected type {:?} but got {}. Continuing to wait.", 
+                                identifier, waiter_info.expected_event_type, event_type);
                                 
                                 // Put the waiter back in the map to continue waiting
                                 waiters.insert(identifier, waiter_info);
@@ -233,7 +233,7 @@ impl EventManager {
             }
             for id in timed_out_ids {
                 if let Some(info) = waiters.remove(&id) {
-                    warn!("Waiter for identifier {} (expecting type {}) timed out.", id, info.expected_event_type);
+                    warn!("Waiter for identifier {} (expecting type {:?}) timed out.", id, info.expected_event_type);
                     let _ = info.sender.send(Err(ObsError::Timeout("Request timed out".to_string()))); // Using Timeout with a String parameter
                 }
                 // Also remove from pending events if it arrived just now but waiter timed out
@@ -306,7 +306,7 @@ impl EventManager {
         &self,
         identifier: i32,
         timeout: Duration,
-        expected_event_type: i32,
+        expected_event_type: Option<i32>,
         error_event_types: Vec<i32>,
         deserializer: F,
     ) -> Result<T, ObsError>
@@ -338,7 +338,7 @@ impl EventManager {
 
         // Block waiting for the response from the manager thread
         debug!(
-            "Waiting for response for identifier {} (expecting type {}, timeout: {:?})...",
+            "Waiting for response for identifier {} (expecting type {:?}, timeout: {:?})...",
             identifier, expected_event_type, timeout
         );
 
@@ -366,7 +366,7 @@ impl EventManager {
                         // Deserializer decided this wasn't the right event after all (unexpected)
                         error!("Deserializer skipped event type {} for identifier {}", event.event, identifier);
                         Err(ObsError::EventManagerError(
-                            format!("Unexpected event type: expected {}, received {}", 
+                            format!("Unexpected event type: expected {:?}, received {}", 
                                 expected_event_type, event.event)
                         ))
                     }

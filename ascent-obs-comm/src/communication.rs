@@ -149,7 +149,7 @@ impl ObsClient {
         identifier: i32,
         payload: P,
         timeout: Duration,
-        expected_event_type: i32,
+        expected_event_type: Option<i32>,
         error_event_types: Vec<i32>,
         deserializer: F,
     ) -> Result<T, ObsError>

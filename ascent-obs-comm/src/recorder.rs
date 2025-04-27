@@ -101,9 +101,39 @@ impl Recorder {
             self.game_pid
         );
 
+        fn deserialize_start_response(
+            event: &EventNotification,
+        ) -> Result<Option<()>, ObsError> {
+            // If the event is an error type, extract the error code and return a meaningful error
+            if event.event == EVT_ERR {
+                if let Some(payload) = &event.payload {
+                    // Try to extract error code as a number
+                    if let Some(code) = payload.get("code").and_then(|v| v.as_i64()) {
+                        return Err(ObsError::ProcessStart(format!(
+                            "Recording failed to start with error code: {}", 
+                            code
+                        )));
+                    }
+                }
+                // Generic error if we can't extract the payload
+                return Err(ObsError::ProcessStart("Recording failed to start".to_string()));
+            }
+            
+            // For non-error events, return success
+            Ok(Some(()))
+        }
+
         // Send command synchronously (blocks)
         self.client
-            .send_command(CMD_START, Some(identifier), start_payload)?;
+        .send_command_and_wait(
+            CMD_START,
+            identifier,
+            start_payload,
+            Duration::from_secs(20), // Adjust timeout as needed
+            None, // No specific expected event type
+            vec![EVT_ERR], // Blacklist the error event type
+            deserialize_start_response,
+        )?;
 
         // Store the ID *after* successfully sending the command
         *active_id_guard = Some(identifier);
@@ -304,7 +334,7 @@ impl Recorder {
                     replay_id,
                     save_payload,
                     Duration::from_secs(3), // Adjust timeout as needed
-                    EVT_REPLAY_CAPTURE_VIDEO_STARTED, // Replace with actual event code
+                    Some(EVT_REPLAY_CAPTURE_VIDEO_STARTED), // Replace with actual event code
                     vec![],
                     deserialize_start_replay_response,
                 )?;
@@ -391,7 +421,7 @@ impl Recorder {
                 identifier,
                 payload,
                 Duration::from_secs(20), // Longer timeout for stopping recording
-                EVT_RECORDING_STOPPED,    // Expected event type
+                Some(EVT_RECORDING_STOPPED),    // Expected event type
                 vec![],
                 deserialize_stop_response,
             ) {

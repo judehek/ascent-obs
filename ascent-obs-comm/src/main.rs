@@ -18,7 +18,7 @@ const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/libraries/ascent-obs/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 46420; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 30716; // !! Make sure this PID is correct when you run! !!
 
 fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
@@ -72,7 +72,16 @@ fn run_recorder() -> Result<(), ObsError> {
         // --- Create the recorder directly with new() ---
     let recorder = Recorder::new(ASCENT_OBS_PATH, config, TARGET_PID, None)?;
     
-    let recording_id = recorder.start_recording()?;
+    let recording_id = match recorder.start_recording() {
+        Ok(id) => {
+            println!("Start recording command sent (id: {})", id);
+            id
+        },
+        Err(e) => {
+            eprintln!("Failed to start recording: {}", e);
+            return Err(e);
+        }
+    };
     println!("Start recording command sent (id: {})", recording_id);
 
     // Let it run
