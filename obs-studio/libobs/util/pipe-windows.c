@@ -262,7 +262,7 @@ size_t os_process_pipe_write(os_process_pipe_t *pp, const uint8_t *data,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// ow
+// ASCENT_EDIT_START: Carried over (empty)
 
 #pragma warning(disable : 4013)
 #pragma warning(disable : 4047)

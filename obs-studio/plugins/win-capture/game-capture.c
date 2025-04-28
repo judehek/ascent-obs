@@ -181,8 +181,10 @@ struct game_capture {
 	DWORD thread_id;
 	HWND next_window;
 	HWND window;
-	int need_to_retry; //ow
-	uint64_t last_retry_ts; //ow
+	// ASCENT_EDIT_START: Carried over (empty)
+	int need_to_retry;
+	uint64_t last_retry_ts;
+	// ASCENT_EDIT_END: Carried over (empty)
 	float retry_time;
 	float fps_reset_time;
 	float retry_interval;
@@ -2192,11 +2194,12 @@ static void game_capture_tick(void *data, float seconds)
 			   !gc->active &&
 			   !gc->error_acquiring &&
 			   !gc->was_ever_active){
-			 //ow lets try to hook even when game is not visible (for first injection)
+			// ASCENT_EDIT_START: Carried over (lets try to hook even when game is not visible (for first injection))
 			if (gc->retry_time > gc->retry_interval) {
 				//MessageBox(0, L"try_hook", L"try_hook", 0);
 				try_hook(gc); //l
 				gc->retry_time = 0.0f;
+			// ASCENT_EDIT_END: Carried over (lets try to hook even when game is not visible (for first injection))
 
 			} else {
 				gc->retry_time =
@@ -2322,7 +2325,7 @@ static void game_capture_tick(void *data, float seconds)
 			}
 		}
 		if ((result != CAPTURE_RETRY && !gc->capturing) ||
-		    gc->need_to_retry > kCaptureDataErrorRetries) { // ow
+		    gc->need_to_retry > kCaptureDataErrorRetries) { // ASCENT_EDIT_START: Carried over ()
 			gc->retry_interval =
 				ERROR_RETRY_INTERVAL *
 				hook_rate_to_float(gc->config.hook_rate);
