@@ -28,6 +28,8 @@ pub struct RecordingConfig {
     
     pub capture_microphone: bool,
 
+    pub microphone_device: Option<String>,
+
     /// If set will only capture audio from this window, example: "RiotClientServices.exe;League of Legends.exe"
     pub window_audio_only: Option<String>,
 }
@@ -46,6 +48,7 @@ impl RecordingConfig {
             bitrate: 6000,
             replay_buffer_seconds: None,
             capture_microphone: false,
+            microphone_device: None,
             window_audio_only: None,
         }
     }
@@ -92,6 +95,11 @@ impl RecordingConfig {
     
     pub fn with_capture_microphone(mut self, capture_microphone: bool) -> Self {
         self.capture_microphone = capture_microphone;
+        self
+    }
+
+    pub fn with_microphone_device(mut self, microphone_device: Option<String>) -> Self {
+        self.microphone_device = microphone_device;
         self
     }
 

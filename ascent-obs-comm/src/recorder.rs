@@ -207,25 +207,26 @@ impl Recorder {
         };
     
         let audio_settings = {
-            let mut settings = AudioSettings {
+            let settings = AudioSettings {
                 sample_rate: Some(config.sample_rate),
-                output_device: Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() }),
+                output_device: Some(AudioDeviceSettings { 
+                    device_id: Some("default".to_string()), 
+                    ..Default::default() 
+                }),
                 // Only include input_device if capture_microphone is true
                 input_device: if config.capture_microphone {
-                    Some(AudioDeviceSettings { device_id: Some("default".to_string()), ..Default::default() })
+                    Some(AudioDeviceSettings { 
+                        device_id: Some(match &config.microphone_device {
+                            Some(device) => device.clone(),
+                            None => "default".to_string()
+                        }), 
+                        ..Default::default() 
+                    })
                 } else {
                     None
                 },
                 ..Default::default()
             };
-            
-            // Only add extra_options if window_audio_only is Some
-            if let Some(window_audio_processes) = &config.window_audio_only {
-                settings.extra_options = Some(AudioExtraOptions {
-                    audio_capture_process: Some(window_audio_processes.clone()),
-                    ..Default::default()
-                });
-            }
             
             settings
         };
