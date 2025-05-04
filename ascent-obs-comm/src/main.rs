@@ -18,7 +18,7 @@ const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/libraries/ascent-obs/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 13840; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 29564; // !! Make sure this PID is correct when you run! !!
 
 fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
@@ -69,6 +69,7 @@ fn run_recorder() -> Result<(), ObsError> {
         // .with_cursor(true)               // Default is true
         // .with_sample_rate(48000)         // Default is 48000
         .with_replay_buffer(Some(30))
+        .with_window_audio_only(Some("RiotClientServices.exe;League of Legends.exe".to_string()))
         ;
         // --- Create the recorder directly with new() ---
     let recorder = Recorder::new(ASCENT_OBS_PATH, config, TARGET_PID, None)?;

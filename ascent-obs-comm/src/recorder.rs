@@ -183,13 +183,14 @@ impl Recorder {
     }
 
     // create_start_payload was already synchronous, no changes needed here
+    // create_start_payload with window_audio_only support
     fn create_start_payload(&self, recorder_type: RecorderType, include_file_output: bool, game_pid: i32) -> StartCommandPayload {
         let config = &self.config;
-    
+        
         // Create encoder settings
         let mut encoder_settings = HashMap::new();
         encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
-    
+        
         // Add encoder preset if available
         if let Some(preset) = &config.encoder_preset {
             let preset_key = if config.encoder_id == "obs_qsv11_v2" {
@@ -201,7 +202,6 @@ impl Recorder {
             encoder_settings.insert(preset_key, json!(preset));
         }
         
-    
         // Create video settings
         let video_settings = VideoSettings {
             video_encoder: VideoEncoderSettings {
@@ -217,9 +217,9 @@ impl Recorder {
             output_height: Some(config.output_resolution.1),
             ..Default::default()
         };
-    
+        
         let audio_settings = {
-            let settings = AudioSettings {
+            let mut settings = AudioSettings {
                 sample_rate: Some(config.sample_rate),
                 output_device: Some(AudioDeviceSettings { 
                     device_id: Some("default".to_string()), 
@@ -240,9 +240,18 @@ impl Recorder {
                 ..Default::default()
             };
             
+            // Add extra_options if window_audio_only is set
+            if let Some(ref window_audio) = config.window_audio_only {
+                let extra_options = AudioExtraOptions {
+                    audio_capture_process: Some(window_audio.clone()),
+                    ..Default::default()
+                };
+                settings.extra_options = Some(extra_options);
+            }
+            
             settings
         };
-    
+        
         // Create scene settings
         let sources = SceneSettings {
             game: Some(GameSourceSettings {
@@ -253,7 +262,7 @@ impl Recorder {
             }),
             ..Default::default()
         };
-    
+        
         // Create replay settings if configured
         let replay_settings = if config.replay_buffer_seconds.is_some() {
             Some(ReplaySettings {
@@ -263,7 +272,7 @@ impl Recorder {
         } else {
             None
         };
-    
+        
         // Create file output settings if requested
         let file_output = if include_file_output {
             Some(FileOutputSettings {
@@ -273,7 +282,7 @@ impl Recorder {
         } else {
             None
         };
-    
+        
         // Construct and return the payload
         StartCommandPayload {
             recorder_type,
