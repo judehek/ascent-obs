@@ -32,6 +32,8 @@ pub struct RecordingConfig {
 
     /// If set will only capture audio from this window, example: "RiotClientServices.exe;League of Legends.exe"
     pub window_audio_only: Option<String>,
+
+    pub encoder_preset: Option<String>,
 }
 
 impl RecordingConfig {
@@ -50,6 +52,7 @@ impl RecordingConfig {
             capture_microphone: false,
             microphone_device: None,
             window_audio_only: None,
+            encoder_preset: None,
         }
     }
     
@@ -105,6 +108,11 @@ impl RecordingConfig {
 
     pub fn with_window_audio_only(mut self, window_audio_only: Option<String>) -> Self {
         self.window_audio_only = window_audio_only;
+        self
+    }
+
+    pub fn with_encoder_preset(mut self, encoder_preset: Option<String>) -> Self {
+        self.encoder_preset = encoder_preset;
         self
     }
 }

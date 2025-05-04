@@ -18,7 +18,7 @@ const ASCENT_OBS_PATH: &str =
     "/Users/judeb/AppData/Local/Ascent/libraries/ascent-obs/bin/64bit/ascent-obs.exe";
 const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
 const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 32704; // !! Make sure this PID is correct when you run! !!
+const TARGET_PID: i32 = 13840; // !! Make sure this PID is correct when you run! !!
 
 fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
@@ -62,7 +62,8 @@ fn run_recorder() -> Result<(), ObsError> {
     // Create a RecordingConfig and start recording
     let config = RecordingConfig::new(FILE_PATH)
         // Optional settings:
-        .with_encoder("jim_nvenc")       // Default is jim_nvenc anyway
+        .with_encoder("obs_x264")       // Default is jim_nvenc anyway
+        .with_encoder_preset(Some("ultrafast".to_string()))
         // .with_fps(60)                    // Default is 60
         // .with_resolution(1920, 1080)     // Default is 1920x1080
         // .with_cursor(true)               // Default is true

@@ -190,6 +190,18 @@ impl Recorder {
         let mut encoder_settings = HashMap::new();
         encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
     
+        // Add encoder preset if available
+        if let Some(preset) = &config.encoder_preset {
+            let preset_key = if config.encoder_id == "obs_qsv11_v2" {
+                "target_usage".to_string()
+            } else {
+                "preset".to_string()
+            };
+            
+            encoder_settings.insert(preset_key, json!(preset));
+        }
+        
+    
         // Create video settings
         let video_settings = VideoSettings {
             video_encoder: VideoEncoderSettings {
@@ -211,7 +223,7 @@ impl Recorder {
                 sample_rate: Some(config.sample_rate),
                 output_device: Some(AudioDeviceSettings { 
                     device_id: Some("default".to_string()), 
-                    ..Default::default() 
+                    ..Default::default()
                 }),
                 // Only include input_device if capture_microphone is true
                 input_device: if config.capture_microphone {
