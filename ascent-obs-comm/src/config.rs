@@ -34,6 +34,12 @@ pub struct RecordingConfig {
     pub window_audio_only: Option<String>,
 
     pub encoder_preset: Option<String>,
+    
+    /// System audio volume percentage (default: 100)
+    pub system_audio_volume: u32,
+    
+    /// Microphone audio volume percentage (default: 100)
+    pub microphone_volume: u32,
 }
 
 impl RecordingConfig {
@@ -53,6 +59,8 @@ impl RecordingConfig {
             microphone_device: None,
             window_audio_only: None,
             encoder_preset: None,
+            system_audio_volume: 100,
+            microphone_volume: 100,
         }
     }
     
@@ -113,6 +121,18 @@ impl RecordingConfig {
 
     pub fn with_encoder_preset(mut self, encoder_preset: Option<String>) -> Self {
         self.encoder_preset = encoder_preset;
+        self
+    }
+    
+    /// Sets the system audio volume percentage.
+    pub fn with_system_audio_volume(mut self, volume: u32) -> Self {
+        self.system_audio_volume = volume;
+        self
+    }
+    
+    /// Sets the microphone audio volume percentage.
+    pub fn with_microphone_volume(mut self, volume: u32) -> Self {
+        self.microphone_volume = volume;
         self
     }
 }

@@ -12,7 +12,7 @@ pub struct AudioDeviceSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub device_id: Option<String>, // "default", "disabled", or specific ID
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub volume: Option<i32>, // Typically 0-100 or 0-2000; -1 might mean disabled/ignore
+    pub volume: Option<u32>, // Typically 0-100 or 0-2000; -1 might mean disabled/ignore
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mono: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "use_device_timing")]
