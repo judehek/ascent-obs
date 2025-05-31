@@ -1,5 +1,5 @@
 use ascent_obs_comm::{
-    errors::ObsError, Recorder, RecordingConfig
+    errors::ObsError, Recorder, RecordingConfig, types::encoder::RateControlMode
 };
 use log::debug;
 use std::io::{self, Write};
@@ -14,11 +14,17 @@ async fn main() {
     }
 }
 
+// const ASCENT_OBS_PATH: &str =
+//     "/Users/judeb/AppData/Local/Ascent/libraries/ascent-obs/bin/64bit/ascent-obs.exe";
+// const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
+// const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
+// const TARGET_PID: i32 = 29564; // !! Make sure this PID is correct when you run! !!
+
 const ASCENT_OBS_PATH: &str =
-    "/Users/judeb/AppData/Local/Ascent/libraries/ascent-obs/bin/64bit/ascent-obs.exe";
-const FILE_PATH: &str = "C:/Users/judeb/Desktop/output_refactored.mp4";
-const REPLAY_FILE_PATH: &str = "C:/Users/judeb/Desktop/automatic_replay_buffer.mp4";
-const TARGET_PID: i32 = 29564; // !! Make sure this PID is correct when you run! !!
+    "/Users/wanga/AppData/Local/Ascent/libraries/ascent-obs/bin/64bit/ascent-obs.exe";
+const FILE_PATH: &str = "C:/Users/wanga/Downloads/output.mp4";
+const REPLAY_FILE_PATH: &str = "C:/Users/wanga/Downloads/automatic_replay_buffer.mp4";
+const TARGET_PID: i32 = 29100; // !! Make sure this PID is correct when you run! !!
 
 fn run_recorder() -> Result<(), ObsError> {
     println!("Configuring recorder...");
@@ -70,6 +76,8 @@ fn run_recorder() -> Result<(), ObsError> {
         // .with_sample_rate(48000)         // Default is 48000
         .with_replay_buffer(Some(30))
         .with_window_audio_only(Some("RiotClientServices.exe;League of Legends.exe".to_string()))
+        .with_rate_control_mode(RateControlMode::Cqp)
+        // .with_rate_control_preanalysis(true)
         ;
         // --- Create the recorder directly with new() ---
     let recorder = Recorder::new(ASCENT_OBS_PATH, config, TARGET_PID, None)?;

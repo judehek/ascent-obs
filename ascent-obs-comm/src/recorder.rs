@@ -4,7 +4,13 @@
 use crate::communication::ObsClient; // Assumes ObsClient is now the synchronous version
 use crate::errors::ObsError;
 use crate::types::{
-    AudioDeviceSettings, AudioExtraOptions, AudioSettings, ErrorEventPayload, EventNotification, FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RecorderType, ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, EVT_RECORDING_STARTED, EVT_RECORDING_STOPPED, EVT_REPLAY_CAPTURE_VIDEO_STARTED, EVT_REPLAY_STARTED, VIDEO_ENCODER_ID_NVENC_NEW // Assuming types remain mostly the same
+    AudioDeviceSettings, AudioExtraOptions, AudioSettings, ErrorEventPayload, EventNotification, 
+    FileOutputSettings, GameSourceSettings, QueryMachineInfoEventPayload, RateControlMode, RecorderType, 
+    ReplaySettings, SceneSettings, StartCommandPayload, StartReplayCaptureCommandPayload, StopCommandPayload, 
+    VideoEncoderSettings, VideoSettings, CMD_QUERY_MACHINE_INFO, CMD_SHUTDOWN, CMD_START, 
+    CMD_START_REPLAY_CAPTURE, CMD_STOP, CMD_STOP_REPLAY_CAPTURE, EVT_ERR, EVT_QUERY_MACHINE_INFO, 
+    EVT_RECORDING_STARTED, EVT_RECORDING_STOPPED, EVT_REPLAY_CAPTURE_VIDEO_STARTED, 
+    VIDEO_ENCODER_ID_NVENC_NEW
 };
 use crate::RecordingConfig;
 use log::{debug, error, info, warn};
@@ -189,7 +195,34 @@ impl Recorder {
         
         // Create encoder settings
         let mut encoder_settings = HashMap::new();
-        encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
+
+        match config.rate_control_mode {
+            RateControlMode::Crf => {
+                // For CRF (Constant Rate Factor) mode
+                encoder_settings.insert("rate_control".to_string(), json!("CRF"));
+                encoder_settings.insert("qp.i".to_string(), json!(config.crf_value));
+                encoder_settings.insert("qp.p".to_string(), json!(config.crf_value));
+                encoder_settings.insert("qp.b".to_string(), json!(config.crf_value));
+            },
+            RateControlMode::Cqp => {
+                // For CQP (Constant QP) mode
+                encoder_settings.insert("rate_control".to_string(), json!("CQP"));
+                encoder_settings.insert("qp.i".to_string(), json!(config.cqp_value));
+                encoder_settings.insert("qp.p".to_string(), json!(config.cqp_value));
+                encoder_settings.insert("qp.b".to_string(), json!(config.cqp_value));
+            },
+            RateControlMode::Cbr => {
+                // For CBR (Constant Bitrate) mode
+                encoder_settings.insert("rate_control".to_string(), json!("CBR"));
+                encoder_settings.insert("bitrate".to_string(), json!(config.bitrate));
+            },
+            RateControlMode::Vbr => {
+                // For VBR (Variable Bitrate) mode
+                encoder_settings.insert("rate_control".to_string(), json!("VBR"));
+                encoder_settings.insert("bitrate".to_string(), json!(config.target_bitrate));
+                encoder_settings.insert("max_bitrate".to_string(), json!(config.max_bitrate));
+            }
+        }
         
         // Add encoder preset if available
         if let Some(preset) = &config.encoder_preset {
@@ -200,6 +233,12 @@ impl Recorder {
             };
             
             encoder_settings.insert(preset_key, json!(preset));
+        }
+        
+        // Add rate control preanalysis setting if applicable
+        // TODO: is this the right setting name????
+        if config.rate_control_preanalysis_enabled {
+            encoder_settings.insert("PrePassMode".to_string(), json!(1));
         }
         
         // Create video settings

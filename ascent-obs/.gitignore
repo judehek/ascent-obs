@@ -12,6 +12,7 @@
 /libascentobs/Release/
 /libascentobs/Debug/
 /libascentobs/x64/
+/libowobs
 /output
 *.aps
 /.vs

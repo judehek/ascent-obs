@@ -7,7 +7,7 @@ mod fields;
 mod settings;
 mod commands;
 mod events;
-// No need to declare errors here, it's a top-level module now
+pub mod encoder;
 
 // Re-export the types for easier access from outside the module
 pub use codes::*;
@@ -16,3 +16,4 @@ pub use fields::*;
 pub use settings::*;
 pub use commands::*;
 pub use events::*;
+pub use encoder::*;
