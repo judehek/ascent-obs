@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "xstring": "cpp",
+        "chrono": "c",
+        "filesystem": "c",
+        "format": "c",
+        "regex": "c",
+        "thread": "c",
+        "vector": "c"
+    }
+}
