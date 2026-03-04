@@ -1,229 +1,370 @@
-$ScriptName = $MyInvocation.MyCommand.Name
-$BaseSourceDirectory = $PSScriptRoot
-$DesktopPath = [Environment]::GetFolderPath("")
-$TargetRootFolderName = "ascent-obs"
-$TargetRootPath = Join-Path -Path $DesktopPath -ChildPath $TargetRootFolderName
+param(
+    [string]$TargetPath = "",
+    [string]$Configuration = "RelWithDebInfo",
+    [switch]$DryRun
+)
 
-Write-Host "-----------------------------------------------------"
-Write-Host "Source Base Path: $BaseSourceDirectory"
-Write-Host "Target Path:      $TargetRootPath"
-Write-Host "-----------------------------------------------------"
+# --- Configuration ---
+$ObsStudioDir = Join-Path $PSScriptRoot "..\obs-studio"
+$ObsStudioDir = (Resolve-Path $ObsStudioDir -ErrorAction Stop).Path
 
-$FileMappings = @{
-    '.deps\obs-deps-2024-03-19-x64\bin\avcodec-60.dll'   = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\avdevice-60.dll'  = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\avfilter-9.dll'   = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\avformat-60.dll'  = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\avutil-58.dll'    = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\ffmpeg.exe'      = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\ffprobe.exe'     = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\libcurl.dll'     = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\librist.dll'     = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\libx264-164.dll'  = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\srt.dll'         = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\swresample-4.dll' = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\swscale-7.dll'    = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\zlib.dll'        = 'bin\64bit'
-    '.deps\obs-deps-2024-03-19-x64\bin\postproc-58.dll' = 'bin\64bit'
-
-    'build_x64\deps\w32-pthreads\RelWithDebInfo\w32-pthreads.dll' = 'bin\64bit'
-    'build_x64\libobs\RelWithDebInfo\obs.dll'                     = 'bin\64bit'
-    'build_x64\libobs-d3d11\RelWithDebInfo\libobs-d3d11.dll'       = 'bin\64bit'
-    'build_x64\libobs-opengl\RelWithDebInfo\libobs-opengl.dll'     = 'bin\64bit'
-    'build_x64\libobs-winrt\RelWithDebInfo\libobs-winrt.dll'      = 'bin\64bit'
-    'build_x64\plugins\obs-ffmpeg\obs-amf-test\RelWithDebInfo\obs-amf-test.exe' = 'bin\64bit'
-    'build_x64\plugins\obs-ffmpeg\obs-nvenc-test\RelWithDebInfo\obs-nvenc-test.exe' = 'bin\64bit'
-    'build_x64\plugins\obs-qsv11\obs-qsv-test\RelWithDebInfo\obs-qsv-test.exe' = 'bin\64bit'
-    'build_x64\rundir\RelWithDebInfo\bin\64bit\obs-ffmpeg-mux.exe' = 'bin\64bit'
-
-    'build_x64\plugins\coreaudio-encoder\RelWithDebInfo\coreaudio-encoder.dll' = 'obs-plugins\64bit'
-    'build_x64\plugins\image-source\RelWithDebInfo\image-source.dll'           = 'obs-plugins\64bit'
-    'build_x64\plugins\obs-ffmpeg\RelWithDebInfo\obs-ffmpeg.dll'               = 'obs-plugins\64bit'
-    'build_x64\plugins\obs-filters\RelWithDebInfo\obs-filters.dll'             = 'obs-plugins\64bit'
-    'build_x64\plugins\obs-outputs\RelWithDebInfo\obs-outputs.dll'             = 'obs-plugins\64bit'
-    'build_x64\plugins\obs-qsv11\RelWithDebInfo\obs-qsv11.dll'                 = 'obs-plugins\64bit'
-    'build_x64\plugins\obs-transitions\RelWithDebInfo\obs-transitions.dll'     = 'obs-plugins\64bit'
-    'build_x64\plugins\obs-x264\RelWithDebInfo\obs-x264.dll'                   = 'obs-plugins\64bit'
-    'build_x64\plugins\rtmp-services\RelWithDebInfo\rtmp-services.dll'         = 'obs-plugins\64bit'
-    'build_x64\plugins\win-capture\RelWithDebInfo\win-capture.dll'             = 'obs-plugins\64bit'
-    'build_x64\plugins\win-dshow\RelWithDebInfo\win-dshow.dll'                 = 'obs-plugins\64bit'
-    'build_x64\plugins\win-wasapi\RelWithDebInfo\win-wasapi.dll'               = 'obs-plugins\64bit'
-
-    'build_x64\rundir\RelWithDebInfo\data\libobs\area.effect'                  = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\bicubic_scale.effect'         = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\bilinear_lowres_scale.effect' = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\color.effect'                 = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\default.effect'               = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\default_rect.effect'          = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_base.effect'      = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_blend.effect'     = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_blend_2x.effect'  = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_discard.effect'   = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_discard_2x.effect'= 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_linear.effect'    = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_linear_2x.effect' = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_yadif.effect'     = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\deinterlace_yadif_2x.effect'  = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\format_conversion.effect'     = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\lanczos_scale.effect'         = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\opaque.effect'                = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\premultiplied_alpha.effect'   = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\repeat.effect'                = 'data\libobs'
-    'build_x64\rundir\RelWithDebInfo\data\libobs\solid.effect'                 = 'data\libobs'
-
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\blend_add_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\blend_mul_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\blend_sub_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\chroma_key_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\chroma_key_filter_v2.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\color.effect'            = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\color_correction_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\color_grade_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\color_key_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\color_key_filter_v2.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\crop_filter.effect'      = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\hdr_tonemap_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\luma_key_filter.effect'  = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\luma_key_filter_v2.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\mask_alpha_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\mask_color_filter.effect' = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\rtx_greenscreen.effect'  = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\sharpness.effect'        = 'data\obs-plugins\obs-filters'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\LUTs\grayscale.cube'    = 'data\obs-plugins\obs-filters\LUTs'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-filters\LUTs\original.cube'     = 'data\obs-plugins\obs-filters\LUTs'
-
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-transitions\fade_to_color_transition.effect' = 'data\obs-plugins\obs-transitions'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-transitions\fade_transition.effect'          = 'data\obs-plugins\obs-transitions'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-transitions\luma_wipe_transition.effect'     = 'data\obs-plugins\obs-transitions'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-transitions\slide_transition.effect'         = 'data\obs-plugins\obs-transitions'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-transitions\stinger_matte_transition.effect' = 'data\obs-plugins\obs-transitions'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\obs-transitions\swipe_transition.effect'         = 'data\obs-plugins\obs-transitions'
-
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\rtmp-services\package.json' = 'data\obs-plugins\rtmp-services'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\rtmp-services\services.json'= 'data\obs-plugins\rtmp-services'
-
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\win-capture\compatibility.json' = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\win-capture\get-graphics-offsets32.exe' = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\win-capture\get-graphics-offsets64.exe' = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\win-capture\inject-helper32.exe'       = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\win-capture\inject-helper64.exe'       = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\win-capture\ascent-graphics-hook32.dll'     = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\win-capture\ascent-graphics-hook64.dll'     = 'data\obs-plugins\win-capture'
-    'build_x64\rundir\RelWithDebInfo\data\obs-plugins\win-capture\package.json'              = 'data\obs-plugins\win-capture'
-
-    'libobs\data\area.effect'                   = 'data\libobs'
-    'libobs\data\bicubic_scale.effect'          = 'data\libobs'
-    'libobs\data\bilinear_lowres_scale.effect'  = 'data\libobs'
-    'libobs\data\color.effect'                  = 'data\libobs'
-    'libobs\data\default.effect'                = 'data\libobs'
-    'libobs\data\default_rect.effect'           = 'data\libobs'
-    'libobs\data\deinterlace_base.effect'       = 'data\libobs'
-    'libobs\data\deinterlace_blend.effect'      = 'data\libobs'
-    'libobs\data\deinterlace_blend_2x.effect'   = 'data\libobs'
-    'libobs\data\deinterlace_discard.effect'    = 'data\libobs'
-    'libobs\data\deinterlace_discard_2x.effect' = 'data\libobs'
-    'libobs\data\deinterlace_linear.effect'     = 'data\libobs'
-    'libobs\data\deinterlace_linear_2x.effect'  = 'data\libobs'
-    'libobs\data\deinterlace_yadif.effect'      = 'data\libobs'
-    'libobs\data\deinterlace_yadif_2x.effect'   = 'data\libobs'
-    'libobs\data\format_conversion.effect'      = 'data\libobs'
-    'libobs\data\lanczos_scale.effect'          = 'data\libobs'
-    'libobs\data\opaque.effect'                 = 'data\libobs'
-    'libobs\data\premultiplied_alpha.effect'    = 'data\libobs'
-    'libobs\data\repeat.effect'                 = 'data\libobs'
-    'libobs\data\solid.effect'                  = 'data\libobs'
-
-    'plugins\obs-filters\data\blend_add_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\blend_mul_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\blend_sub_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\chroma_key_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\chroma_key_filter_v2.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\color.effect'            = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\color_correction_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\color_grade_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\color_key_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\color_key_filter_v2.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\crop_filter.effect'      = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\hdr_tonemap_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\luma_key_filter.effect'  = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\luma_key_filter_v2.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\mask_alpha_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\mask_color_filter.effect' = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\rtx_greenscreen.effect'  = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\sharpness.effect'        = 'data\obs-plugins\obs-filters'
-    'plugins\obs-filters\data\LUTs\grayscale.cube'    = 'data\obs-plugins\obs-filters\LUTs'
-    'plugins\obs-filters\data\LUTs\original.cube'     = 'data\obs-plugins\obs-filters\LUTs'
-
-    'plugins\obs-transitions\data\fade_to_color_transition.effect' = 'data\obs-plugins\obs-transitions'
-    'plugins\obs-transitions\data\fade_transition.effect'          = 'data\obs-plugins\obs-transitions'
-    'plugins\obs-transitions\data\luma_wipe_transition.effect'     = 'data\obs-plugins\obs-transitions'
-    'plugins\obs-transitions\data\slide_transition.effect'         = 'data\obs-plugins\obs-transitions'
-    'plugins\obs-transitions\data\stinger_matte_transition.effect' = 'data\obs-plugins\obs-transitions'
-    'plugins\obs-transitions\data\swipe_transition.effect'         = 'data\obs-plugins\obs-transitions'
-
-    'plugins\rtmp-services\data\package.json'         = 'data\obs-plugins\rtmp-services'
-    'plugins\rtmp-services\data\services.json'        = 'data\obs-plugins\rtmp-services'
-    'plugins\win-capture\data\compatibility.json'     = 'data\obs-plugins\win-capture'
-    'plugins\win-capture\data\package.json'           = 'data\obs-plugins\win-capture'
+if ($TargetPath -eq "") {
+    $TargetPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "ascent-obs"
 }
 
-Write-Host "Creating target directory: $TargetRootPath"
-try {
-    New-Item -Path $TargetRootPath -ItemType Directory -Force -ErrorAction Stop | Out-Null
-} catch {
-    Write-Error "Failed to create target directory '$TargetRootPath'. Check permissions. Error: $($_.Exception.Message)"
-    Exit 1
-}
+$AscentObsDir = Join-Path $PSScriptRoot "..\ascent-obs"
+$AscentObsDir = (Resolve-Path $AscentObsDir -ErrorAction Stop).Path
+$DepsDir = Join-Path $ObsStudioDir ".deps\obs-deps-2024-03-19-x64"
+$BuildDir = Join-Path $ObsStudioDir "build_x64"
+$RunDir = Join-Path $BuildDir "rundir\$Configuration"
 
-Write-Host "Processing file copies..."
-$FileMappings.GetEnumerator() | ForEach-Object {
-    $SourceRelativePath = $_.Key
-    $TargetRelativeDir = $_.Value
+$SuccessCount = 0
+$SkipCount = 0
+$ErrorCount = 0
 
-    $FullSourcePath = Join-Path -Path $BaseSourceDirectory -ChildPath $SourceRelativePath
-    $FullTargetDirPath = Join-Path -Path $TargetRootPath -ChildPath $TargetRelativeDir
-    $FileName = Split-Path -Path $FullSourcePath -Leaf
+Write-Host "======================================================="
+Write-Host "  Ascent-OBS Build Collector"
+Write-Host "======================================================="
+Write-Host "OBS Studio:    $ObsStudioDir"
+Write-Host "Build Config:  $Configuration"
+Write-Host "Target:        $TargetPath"
+if ($DryRun) { Write-Host "MODE:          DRY RUN (no files will be copied)" -ForegroundColor Yellow }
+Write-Host "======================================================="
 
-    if (!(Test-Path -Path $FullSourcePath -PathType Leaf)) {
-        Write-Warning "Source file not found: '$FullSourcePath'. Skipping."
+# --- Helper: Copy a single file ---
+function Copy-BuildFile {
+    param(
+        [string]$SourcePath,
+        [string]$DestRelDir,
+        [string]$DestFileName = ""
+    )
+
+    $FileName = if ($DestFileName -ne "") { $DestFileName } else { Split-Path $SourcePath -Leaf }
+    $DestDir = Join-Path $TargetPath $DestRelDir
+    $DestFile = Join-Path $DestDir $FileName
+
+    if (-not (Test-Path $SourcePath -PathType Leaf)) {
+        Write-Warning "  SKIP: $SourcePath (not found)"
+        $script:SkipCount++
+        return
+    }
+
+    if ($DryRun) {
+        Write-Host "  [DRY] $FileName -> $DestRelDir" -ForegroundColor Cyan
+        $script:SuccessCount++
         return
     }
 
     try {
-        if (!(Test-Path -Path $FullTargetDirPath)) {
-            Write-Verbose "Creating directory: $FullTargetDirPath"
-            New-Item -Path $FullTargetDirPath -ItemType Directory -Force -ErrorAction Stop | Out-Null
+        if (-not (Test-Path $DestDir)) {
+            New-Item -Path $DestDir -ItemType Directory -Force -ErrorAction Stop | Out-Null
         }
+        Copy-Item -Path $SourcePath -Destination $DestFile -Force -ErrorAction Stop
+        Write-Host "  OK: $FileName -> $DestRelDir" -ForegroundColor Green
+        $script:SuccessCount++
     } catch {
-        Write-Error "Failed to create target sub-directory '$FullTargetDirPath'. Check permissions. Error: $($_.Exception.Message)"
-        return
-    }
-
-    $FullTargetFilePath = Join-Path -Path $FullTargetDirPath -ChildPath $FileName
-
-    Write-Host "Copying '$FileName' from '$SourceRelativePath' to '$TargetRelativeDir'"
-    try {
-        Copy-Item -Path $FullSourcePath -Destination $FullTargetFilePath -Force -ErrorAction Stop -Verbose
-    } catch {
-        Write-Error "Failed to copy '$FullSourcePath' to '$FullTargetFilePath'. Error: $($_.Exception.Message)"
+        Write-Error "  FAIL: $FileName -> $DestRelDir : $($_.Exception.Message)"
+        $script:ErrorCount++
     }
 }
 
-$SourceFile = Join-Path -Path $TargetRootPath -ChildPath "bin\64bit\obs-ffmpeg-mux.exe"
-$TargetFile = Join-Path -Path $TargetRootPath -ChildPath "bin\64bit\ascentobs-ffmpeg-mux.exe"
+# =======================================================
+# 1. Ascent-OBS executable
+# =======================================================
+Write-Host "`n--- Ascent-OBS Executable ---"
+Copy-BuildFile (Join-Path $AscentObsDir "x64\Release\ascent-obs.exe") "bin\64bit"
 
-if (Test-Path -Path $SourceFile -PathType Leaf) {
-    Write-Host "Renaming 'obs-ffmpeg-mux.exe' to 'ascentobs-ffmpeg-mux.exe'"
-    try {
-        Copy-Item -Path $SourceFile -Destination $TargetFile -Force -ErrorAction Stop
-        Remove-Item -Path $SourceFile -Force -ErrorAction SilentlyContinue
-    } catch {
-        Write-Error "Failed to rename '$SourceFile' to '$TargetFile'. Error: $($_.Exception.Message)"
+# =======================================================
+# 2. Third-party dependencies from .deps
+# =======================================================
+Write-Host "`n--- Third-party Dependencies (.deps) ---"
+$DepsBin = Join-Path $DepsDir "bin"
+
+$DepsDlls = @(
+    "avcodec-60.dll"
+    "avdevice-60.dll"
+    "avfilter-9.dll"
+    "avformat-60.dll"
+    "avutil-58.dll"
+    "swresample-4.dll"
+    "swscale-7.dll"
+    "libcurl.dll"
+    "librist.dll"
+    "libx264-164.dll"
+    "srt.dll"
+    "zlib.dll"
+)
+
+foreach ($dll in $DepsDlls) {
+    Copy-BuildFile (Join-Path $DepsBin $dll) "bin\64bit"
+}
+
+$DepsExes = @("ffmpeg.exe", "ffprobe.exe")
+foreach ($exe in $DepsExes) {
+    Copy-BuildFile (Join-Path $DepsBin $exe) "bin\64bit"
+}
+
+# =======================================================
+# 3. C++ Redistributable DLLs
+# =======================================================
+Write-Host "`n--- C++ Redistributable DLLs ---"
+
+$VcCrtPath = $null
+$VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+
+if (Test-Path $VsWhere) {
+    $VsPath = & $VsWhere -latest -property installationPath 2>$null
+    if ($VsPath) {
+        $RedistRoot = Join-Path $VsPath "VC\Redist\MSVC"
+        $VersionDirs = Get-ChildItem $RedistRoot -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^\d' } |
+            Sort-Object Name -Descending
+        foreach ($vdir in $VersionDirs) {
+            $candidate = Join-Path $vdir.FullName "x64"
+            $crtDir = Get-ChildItem $candidate -Directory -Filter "Microsoft.VC14*.CRT" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($crtDir) {
+                $VcCrtPath = $crtDir.FullName
+                break
+            }
+        }
+    }
+}
+
+if ($VcCrtPath) {
+    Write-Host "  Found VC++ CRT: $VcCrtPath"
+    $CppRedistDlls = @(
+        "concrt140.dll"
+        "msvcp140.dll"
+        "msvcp140_1.dll"
+        "msvcp140_2.dll"
+        "vcruntime140.dll"
+        "vcruntime140_1.dll"
+    )
+    foreach ($dll in $CppRedistDlls) {
+        Copy-BuildFile (Join-Path $VcCrtPath $dll) "bin\64bit"
     }
 } else {
-    Write-Warning "Source file for rename not found: '$SourceFile'. Skipping rename operation."
+    Write-Warning "  Could not locate Visual C++ redistributable DLLs."
+    Write-Warning "  Install Visual Studio or set the path manually."
 }
 
-Write-Host "-----------------------------------------------------"
-Write-Host "File organization (copy) process completed."
-Write-Host "-----------------------------------------------------"
+# =======================================================
+# 4. Core OBS libraries from build -> bin\64bit
+# =======================================================
+Write-Host "`n--- Core OBS Libraries (bin\64bit) ---"
+
+$CoreLibs = @{
+    "deps\w32-pthreads\$Configuration\w32-pthreads.dll" = "bin\64bit"
+    "libobs\$Configuration\obs.dll" = "bin\64bit"
+    "libobs-d3d11\$Configuration\libobs-d3d11.dll" = "bin\64bit"
+    "libobs-opengl\$Configuration\libobs-opengl.dll" = "bin\64bit"
+    "libobs-winrt\$Configuration\libobs-winrt.dll" = "bin\64bit"
+    "deps\obs-scripting\$Configuration\obs-scripting.dll" = "bin\64bit"
+}
+
+foreach ($entry in $CoreLibs.GetEnumerator()) {
+    Copy-BuildFile (Join-Path $BuildDir $entry.Key) $entry.Value
+}
+
+# =======================================================
+# 5. Test executables -> bin\64bit
+# =======================================================
+Write-Host "`n--- Test Executables (bin\64bit) ---"
+
+$TestExes = @{
+    "plugins\obs-ffmpeg\obs-amf-test\$Configuration\obs-amf-test.exe" = "bin\64bit"
+    "plugins\obs-ffmpeg\obs-nvenc-test\$Configuration\obs-nvenc-test.exe" = "bin\64bit"
+    "plugins\obs-qsv11\obs-qsv-test\$Configuration\obs-qsv-test.exe" = "bin\64bit"
+}
+
+foreach ($entry in $TestExes.GetEnumerator()) {
+    Copy-BuildFile (Join-Path $BuildDir $entry.Key) $entry.Value
+}
+
+# obs-ffmpeg-mux.exe -> renamed to ascentobs-ffmpeg-mux.exe
+$MuxSource = Join-Path $RunDir "bin\64bit\obs-ffmpeg-mux.exe"
+Copy-BuildFile $MuxSource "bin\64bit" "ascentobs-ffmpeg-mux.exe"
+
+# =======================================================
+# 6. Plugin DLLs -> obs-plugins\64bit
+# =======================================================
+Write-Host "`n--- Plugin DLLs (obs-plugins\64bit) ---"
+
+$Plugins = @(
+    "coreaudio-encoder"
+    "image-source"
+    "obs-ffmpeg"
+    "obs-filters"
+    "obs-outputs"
+    "obs-qsv11"
+    "obs-transitions"
+    "obs-x264"
+    "rtmp-services"
+    "win-capture"
+    "win-dshow"
+    "win-wasapi"
+)
+
+foreach ($plugin in $Plugins) {
+    Copy-BuildFile (Join-Path $BuildDir "plugins\$plugin\$Configuration\$plugin.dll") "obs-plugins\64bit"
+}
+
+# =======================================================
+# 7. Data files: libobs effects
+# =======================================================
+Write-Host "`n--- Data: libobs effects ---"
+
+$LibobsEffects = @(
+    "area.effect", "bicubic_scale.effect", "bilinear_lowres_scale.effect",
+    "color.effect", "default.effect", "default_rect.effect",
+    "deinterlace_base.effect", "deinterlace_blend.effect", "deinterlace_blend_2x.effect",
+    "deinterlace_discard.effect", "deinterlace_discard_2x.effect",
+    "deinterlace_linear.effect", "deinterlace_linear_2x.effect",
+    "deinterlace_yadif.effect", "deinterlace_yadif_2x.effect",
+    "format_conversion.effect", "lanczos_scale.effect", "opaque.effect",
+    "premultiplied_alpha.effect", "repeat.effect", "solid.effect"
+)
+
+$LibobsRunDir = Join-Path $RunDir "data\libobs"
+$LibobsSrcDir = Join-Path $ObsStudioDir "libobs\data"
+
+foreach ($file in $LibobsEffects) {
+    $runPath = Join-Path $LibobsRunDir $file
+    $srcPath = Join-Path $LibobsSrcDir $file
+    if (Test-Path $runPath) {
+        Copy-BuildFile $runPath "data\libobs"
+    } else {
+        Copy-BuildFile $srcPath "data\libobs"
+    }
+}
+
+# =======================================================
+# 8. Data files: obs-filters effects + LUTs
+# =======================================================
+Write-Host "`n--- Data: obs-filters ---"
+
+$FilterEffects = @(
+    "blend_add_filter.effect", "blend_mul_filter.effect", "blend_sub_filter.effect",
+    "chroma_key_filter.effect", "chroma_key_filter_v2.effect",
+    "color.effect", "color_correction_filter.effect", "color_grade_filter.effect",
+    "color_key_filter.effect", "color_key_filter_v2.effect",
+    "crop_filter.effect", "hdr_tonemap_filter.effect",
+    "luma_key_filter.effect", "luma_key_filter_v2.effect",
+    "mask_alpha_filter.effect", "mask_color_filter.effect",
+    "rtx_greenscreen.effect", "sharpness.effect"
+)
+
+$FilterRunDir = Join-Path $RunDir "data\obs-plugins\obs-filters"
+$FilterSrcDir = Join-Path $ObsStudioDir "plugins\obs-filters\data"
+
+foreach ($file in $FilterEffects) {
+    $runPath = Join-Path $FilterRunDir $file
+    $srcPath = Join-Path $FilterSrcDir $file
+    if (Test-Path $runPath) {
+        Copy-BuildFile $runPath "data\obs-plugins\obs-filters"
+    } else {
+        Copy-BuildFile $srcPath "data\obs-plugins\obs-filters"
+    }
+}
+
+$LutFiles = @("grayscale.cube", "original.cube")
+foreach ($file in $LutFiles) {
+    $runPath = Join-Path $FilterRunDir "LUTs\$file"
+    $srcPath = Join-Path $FilterSrcDir "LUTs\$file"
+    if (Test-Path $runPath) {
+        Copy-BuildFile $runPath "data\obs-plugins\obs-filters\LUTs"
+    } else {
+        Copy-BuildFile $srcPath "data\obs-plugins\obs-filters\LUTs"
+    }
+}
+
+# =======================================================
+# 9. Data files: obs-transitions effects
+# =======================================================
+Write-Host "`n--- Data: obs-transitions ---"
+
+$TransEffects = @(
+    "fade_to_color_transition.effect", "fade_transition.effect",
+    "luma_wipe_transition.effect", "slide_transition.effect",
+    "stinger_matte_transition.effect", "swipe_transition.effect"
+)
+
+$TransRunDir = Join-Path $RunDir "data\obs-plugins\obs-transitions"
+$TransSrcDir = Join-Path $ObsStudioDir "plugins\obs-transitions\data"
+
+foreach ($file in $TransEffects) {
+    $runPath = Join-Path $TransRunDir $file
+    $srcPath = Join-Path $TransSrcDir $file
+    if (Test-Path $runPath) {
+        Copy-BuildFile $runPath "data\obs-plugins\obs-transitions"
+    } else {
+        Copy-BuildFile $srcPath "data\obs-plugins\obs-transitions"
+    }
+}
+
+# =======================================================
+# 10. Data files: rtmp-services
+# =======================================================
+Write-Host "`n--- Data: rtmp-services ---"
+
+$RtmpFiles = @("package.json", "services.json")
+$RtmpRunDir = Join-Path $RunDir "data\obs-plugins\rtmp-services"
+$RtmpSrcDir = Join-Path $ObsStudioDir "plugins\rtmp-services\data"
+
+foreach ($file in $RtmpFiles) {
+    $runPath = Join-Path $RtmpRunDir $file
+    $srcPath = Join-Path $RtmpSrcDir $file
+    if (Test-Path $runPath) {
+        Copy-BuildFile $runPath "data\obs-plugins\rtmp-services"
+    } else {
+        Copy-BuildFile $srcPath "data\obs-plugins\rtmp-services"
+    }
+}
+
+# =======================================================
+# 11. Data files: win-capture (hooks, helpers, config)
+# =======================================================
+Write-Host "`n--- Data: win-capture ---"
+
+$WinCaptureFiles = @(
+    "compatibility.json"
+    "package.json"
+    "get-graphics-offsets32.exe"
+    "get-graphics-offsets64.exe"
+    "inject-helper32.exe"
+    "inject-helper64.exe"
+    "ascent-graphics-hook32.dll"
+    "ascent-graphics-hook64.dll"
+)
+
+$WinCapRunDir = Join-Path $RunDir "data\obs-plugins\win-capture"
+$WinCapSrcDir = Join-Path $ObsStudioDir "plugins\win-capture\data"
+
+foreach ($file in $WinCaptureFiles) {
+    $runPath = Join-Path $WinCapRunDir $file
+    if (Test-Path $runPath) {
+        Copy-BuildFile $runPath "data\obs-plugins\win-capture"
+    } elseif ($file -match '\.(json)$') {
+        $srcPath = Join-Path $WinCapSrcDir $file
+        Copy-BuildFile $srcPath "data\obs-plugins\win-capture"
+    } else {
+        Write-Warning "  SKIP: $file (not found in rundir)"
+        $script:SkipCount++
+    }
+}
+
+# =======================================================
+# Summary
+# =======================================================
+Write-Host "`n======================================================="
+Write-Host "  DONE"
+Write-Host "======================================================="
+Write-Host "  Copied:  $SuccessCount files" -ForegroundColor Green
+if ($SkipCount -gt 0) {
+    Write-Host "  Skipped: $SkipCount files (source not found)" -ForegroundColor Yellow
+}
+if ($ErrorCount -gt 0) {
+    Write-Host "  Failed:  $ErrorCount files" -ForegroundColor Red
+}
+Write-Host "  Target:  $TargetPath"
+Write-Host "======================================================="

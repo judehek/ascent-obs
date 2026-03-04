@@ -150,7 +150,7 @@ ftl_status_t _ingest_connect(ftl_stream_configuration_private_t *ftl) {
 
     if (!ftl_get_hmac(ftl->ingest_socket, ftl->key, ftl->hmacBuffer)) {
       FTL_LOG(ftl, FTL_LOG_ERROR, "could not get a signed HMAC!");
-      response_code = FTL_INGEST_NO_RESPONSE;
+      response_code = (ftl_response_code_t)FTL_INGEST_NO_RESPONSE;
       break;
     }
 
@@ -228,26 +228,26 @@ ftl_status_t _ingest_connect(ftl_stream_configuration_private_t *ftl) {
     ftl_set_state(ftl, FTL_CONNECTED);
 
     if (os_semaphore_create(&ftl->connection_thread_shutdown, "/ConnectionThreadShutdown", O_CREAT, 0) < 0) {
-        response_code = FTL_MALLOC_FAILURE;
+        response_code = (ftl_response_code_t)FTL_MALLOC_FAILURE;
         break;
     }
 
     if (os_semaphore_create(&ftl->keepalive_thread_shutdown, "/KeepAliveThreadShutdown", O_CREAT, 0) < 0) {
-        response_code = FTL_MALLOC_FAILURE;
+        response_code = (ftl_response_code_t)FTL_MALLOC_FAILURE;
         break;
     }
 
     ftl_set_state(ftl, FTL_CXN_STATUS_THRD);
     if ((os_create_thread(&ftl->connection_thread, NULL, connection_status_thread, ftl)) != 0) {
       ftl_clear_state(ftl, FTL_CXN_STATUS_THRD);
-      response_code = FTL_MALLOC_FAILURE;
+      response_code = (ftl_response_code_t)FTL_MALLOC_FAILURE;
       break;
     }
 
     ftl_set_state(ftl, FTL_KEEPALIVE_THRD);
     if ((os_create_thread(&ftl->keepalive_thread, NULL, control_keepalive_thread, ftl)) != 0) {
       ftl_clear_state(ftl, FTL_KEEPALIVE_THRD);\
-      response_code = FTL_MALLOC_FAILURE;
+      response_code = (ftl_response_code_t)FTL_MALLOC_FAILURE;
       break;
     }
 
