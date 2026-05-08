@@ -1,0 +1,46 @@
+// Rounded rectangle with anti-aliased edges, drawn via signed-distance field.
+// Caller passes the size of the sprite in pixels and the corner radius (also
+// in pixels). Setting `radius` to half of min(size.x, size.y) yields a
+// capsule / pill shape — used for the mouse silhouette.
+
+uniform float4x4 ViewProj;
+
+uniform float4 color;
+uniform float2 size;
+uniform float  radius;
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	return vert_out;
+}
+
+float4 PSRoundedRect(VertData v_in) : TARGET
+{
+	// uv is in [0,1]; convert to centered pixel coordinates.
+	float2 p = (v_in.uv - 0.5) * size;
+
+	// Standard 2D rounded-rect SDF.
+	float2 q = abs(p) - (size * 0.5 - float2(radius, radius));
+	float  d = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - radius;
+
+	// 1px anti-aliased edge.
+	float alpha = saturate(0.5 - d);
+	return float4(color.rgb, color.a * alpha);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSRoundedRect(v_in);
+	}
+}

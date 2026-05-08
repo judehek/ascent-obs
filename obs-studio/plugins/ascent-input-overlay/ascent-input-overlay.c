@@ -2,18 +2,16 @@
 //
 // Reads a shared-memory snapshot of the user's keyboard/mouse state written
 // by the desktop app (apps/desktop/src-tauri/src/input_overlay/) and renders
-// a visualizer that's composited into the recording. Invisible to the
-// player because compositing happens inside the OBS render pipeline.
-//
-// This file is a scaffold: it opens the shmem, verifies the layout, and
-// renders a single colored rectangle that switches between two colors based
-// on whether the W key is currently pressed. End-to-end IPC validation only.
-// The real visualizer (half-keyboard + mouse) is built on top of this.
+// a half-keyboard + mouse visualizer that's composited into the recording.
+// Invisible to the player because compositing happens inside OBS, not on
+// their monitor.
 
 #include <obs-module.h>
 #include <util/platform.h>
+#include <graphics/matrix4.h>
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <windows.h>
 
@@ -22,21 +20,123 @@
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("ascent-input-overlay", "en-US")
 
-#define DEFAULT_WIDTH          400u
+#define DEFAULT_WIDTH          260u
 #define DEFAULT_HEIGHT         120u
 #define DEFAULT_MIN_VISIBLE_MS 50u
+
+// Native layout dimensions. All key/mouse positions below are in this
+// coordinate space; the renderer scales to the configured source size.
+#define LAYOUT_WIDTH  260.0f
+#define LAYOUT_HEIGHT 120.0f
+
+// Color palette. Format is 0xAABBGGRR — when packed little-endian the bytes
+// land as R, G, B, A which is what `vec4_from_rgba` expects.
+#define COLOR_PANEL_BG     0xE01E1E22u  // dark panel, slightly translucent
+#define COLOR_KEY_OFF      0xFF2E2E32u  // dim key, distinct from panel
+#define COLOR_KEY_ON       0xFFF050C0u  // Ascent purple (R=C0,G=50,B=F0)
+#define COLOR_MOUSE_BODY   0xFF26262Au  // mouse silhouette (slightly darker)
+#define COLOR_BUTTON_OFF   0xFF3A3A40u  // distinct from body so buttons read
+#define COLOR_BUTTON_ON    0xFFF050C0u
+
+// Corner radii (native pixel space).
+#define KEY_RADIUS         3.0f
+#define MOUSE_BODY_RADIUS 22.0f
+#define BUTTON_RADIUS      6.0f
+#define SIDE_BUTTON_RADIUS 2.0f
+#define PANEL_RADIUS       8.0f
 
 struct ascent_input_overlay {
 	obs_source_t *src;
 	HANDLE        mapping;
-	const ascent_input_overlay_state_t *state; // mapped, read-only view
+	const ascent_input_overlay_state_t *state;
 
 	uint32_t width;
 	uint32_t height;
-	/// Minimum time (ms) a key/button stays "visible" after press, even if
-	/// it released between two render calls.
 	uint32_t min_visible_ms;
 };
+
+// ===== Effect (loaded once at module load) =====
+
+static gs_effect_t *g_effect       = NULL;
+static gs_eparam_t *g_param_color  = NULL;
+static gs_eparam_t *g_param_size   = NULL;
+static gs_eparam_t *g_param_radius = NULL;
+
+// ===== Layout tables =====
+
+struct key_rect {
+	uint8_t key_index; // matches state.rs KeyIndex
+	float   x, y, w, h;
+};
+
+// Half keyboard layout — Esc + numbers, then four letter rows ending at the
+// modifier/space row. Indices match the KeyIndex enum in
+// apps/desktop/src-tauri/src/input_overlay/state.rs.
+static const struct key_rect KEY_LAYOUT[] = {
+	// Row 1: Esc + 1..6
+	{  0,   6.0f,   8.0f, 18.0f, 18.0f }, // Escape
+	{  1,  26.0f,   8.0f, 18.0f, 18.0f }, // Num1
+	{  2,  46.0f,   8.0f, 18.0f, 18.0f }, // Num2
+	{  3,  66.0f,   8.0f, 18.0f, 18.0f }, // Num3
+	{  4,  86.0f,   8.0f, 18.0f, 18.0f }, // Num4
+	{  5, 106.0f,   8.0f, 18.0f, 18.0f }, // Num5
+	{  6, 126.0f,   8.0f, 18.0f, 18.0f }, // Num6
+	// Row 2: Tab + Q W E R T
+	{ 14,   6.0f,  28.0f, 28.0f, 18.0f }, // Tab
+	{ 15,  36.0f,  28.0f, 18.0f, 18.0f }, // Q
+	{ 16,  56.0f,  28.0f, 18.0f, 18.0f }, // W
+	{ 17,  76.0f,  28.0f, 18.0f, 18.0f }, // E
+	{ 18,  96.0f,  28.0f, 18.0f, 18.0f }, // R
+	{ 19, 116.0f,  28.0f, 18.0f, 18.0f }, // T
+	// Row 3: Caps + A S D F G
+	{ 28,   6.0f,  48.0f, 32.0f, 18.0f }, // CapsLock
+	{ 29,  40.0f,  48.0f, 18.0f, 18.0f }, // A
+	{ 30,  60.0f,  48.0f, 18.0f, 18.0f }, // S
+	{ 31,  80.0f,  48.0f, 18.0f, 18.0f }, // D
+	{ 32, 100.0f,  48.0f, 18.0f, 18.0f }, // F
+	{ 33, 120.0f,  48.0f, 18.0f, 18.0f }, // G
+	// Row 4: Shift + Z X C V
+	{ 41,   6.0f,  68.0f, 40.0f, 18.0f }, // ShiftLeft
+	{ 42,  48.0f,  68.0f, 18.0f, 18.0f }, // Z
+	{ 43,  68.0f,  68.0f, 18.0f, 18.0f }, // X
+	{ 44,  88.0f,  68.0f, 18.0f, 18.0f }, // C
+	{ 45, 108.0f,  68.0f, 18.0f, 18.0f }, // V
+	// Row 5: Ctrl + Alt + Space
+	{ 53,   6.0f,  88.0f, 24.0f, 18.0f }, // ControlLeft
+	{ 55,  32.0f,  88.0f, 24.0f, 18.0f }, // Alt
+	{ 56,  58.0f,  88.0f, 76.0f, 18.0f }, // Space
+};
+
+#define KEY_LAYOUT_COUNT (sizeof(KEY_LAYOUT) / sizeof(KEY_LAYOUT[0]))
+
+struct mouse_rect {
+	uint8_t bit_index; // bit position into mouse_buttons
+	float   x, y, w, h;
+	float   radius;
+};
+
+// Mouse cluster: rounded body with three top buttons (LMB / scroll / RMB)
+// and two thin side buttons. Body drawn first, buttons composited on top.
+// Positioned right after the keyboard with a small gap.
+#define MOUSE_BODY_X 156.0f
+#define MOUSE_BODY_Y  10.0f
+#define MOUSE_BODY_W  92.0f
+#define MOUSE_BODY_H 100.0f
+
+static const struct mouse_rect MOUSE_LAYOUT[] = {
+	// Top buttons. Inner corners (where LMB meets scroll, etc.) get
+	// rounded too — visually fine because the body shows through behind.
+	{ 0, 161.0f,  16.0f, 38.0f, 40.0f, BUTTON_RADIUS }, // LMB
+	{ 2, 201.0f,  18.0f, 12.0f, 36.0f, BUTTON_RADIUS }, // MMB / scroll wheel
+	{ 1, 215.0f,  16.0f, 28.0f, 40.0f, BUTTON_RADIUS }, // RMB
+	// Side buttons (left edge of mouse body).
+	{ 3, 156.0f,  46.0f,  4.0f, 11.0f, SIDE_BUTTON_RADIUS }, // Back
+	{ 4, 156.0f,  60.0f,  4.0f, 11.0f, SIDE_BUTTON_RADIUS }, // Forward
+};
+
+#define MOUSE_LAYOUT_COUNT (sizeof(MOUSE_LAYOUT) / sizeof(MOUSE_LAYOUT[0]))
+
+// ===== Source lifecycle =====
 
 static const char *ascent_input_overlay_get_name(void *unused)
 {
@@ -131,9 +231,6 @@ static void *ascent_input_overlay_create(obs_data_t *settings,
 	ctx->src = source;
 
 	ascent_input_overlay_update(ctx, settings);
-
-	// Best-effort: if the desktop app isn't up yet, the source still
-	// exists but renders a "disconnected" color until it can connect.
 	open_shmem(ctx);
 
 	return ctx;
@@ -158,23 +255,47 @@ static uint32_t ascent_input_overlay_get_height(void *data)
 	return ctx->height;
 }
 
-// Solid-color helper: draw a filled rect at the source's full dimensions.
-static void draw_solid(uint32_t rgba, uint32_t width, uint32_t height)
+// ===== Drawing =====
+
+// Draw a rounded rectangle using the SDF effect. Anti-aliased edges,
+// alpha-blended over whatever's underneath.
+static void draw_rounded(uint32_t rgba, float x, float y, float w, float h,
+                         float radius)
 {
-	gs_effect_t   *solid = obs_get_base_effect(OBS_EFFECT_SOLID);
-	gs_eparam_t   *color = gs_effect_get_param_by_name(solid, "color");
-	gs_technique_t *tech = gs_effect_get_technique(solid, "Solid");
+	if (!g_effect)
+		return;
 
 	struct vec4 c;
 	vec4_from_rgba(&c, rgba);
 
-	gs_effect_set_vec4(color, &c);
+	struct vec2 sz;
+	sz.x = w;
+	sz.y = h;
 
-	gs_technique_begin(tech);
-	gs_technique_begin_pass(tech, 0);
-	gs_draw_sprite(0, 0, width, height);
-	gs_technique_end_pass(tech);
-	gs_technique_end(tech);
+	gs_matrix_push();
+	gs_matrix_translate3f(x, y, 0.0f);
+
+	gs_effect_set_vec4(g_param_color, &c);
+	gs_effect_set_vec2(g_param_size, &sz);
+	gs_effect_set_float(g_param_radius, radius);
+
+	while (gs_effect_loop(g_effect, "Draw")) {
+		gs_draw_sprite(0, 0, (uint32_t)w, (uint32_t)h);
+	}
+
+	gs_matrix_pop();
+}
+
+// Visibility rule: pressed right now, OR pressed within the last
+// `min_visible_ms` so sub-frame taps don't disappear.
+static bool is_visible(bool pressed_now, uint64_t last_press_tick,
+                       uint64_t now, uint32_t min_visible_ms)
+{
+	if (pressed_now)
+		return true;
+	if (last_press_tick == 0)
+		return false;
+	return (now - last_press_tick) < (uint64_t)min_visible_ms;
 }
 
 static void ascent_input_overlay_render(void *data, gs_effect_t *effect)
@@ -183,32 +304,67 @@ static void ascent_input_overlay_render(void *data, gs_effect_t *effect)
 
 	struct ascent_input_overlay *ctx = data;
 
-	// If the shmem isn't open, try once more — the desktop app may have
-	// started after the source was created. If still no good, paint a
-	// dim diagnostic color so the user can tell the source exists but
-	// isn't receiving data.
 	if (!ctx->state) {
 		if (!open_shmem(ctx)) {
-			draw_solid(0xFF333333, ctx->width, ctx->height);
+			draw_rounded(0xC0333338u, 0.0f, 0.0f,
+			             (float)ctx->width, (float)ctx->height,
+			             8.0f);
 			return;
 		}
 	}
 
 	const ascent_input_overlay_state_t *s = ctx->state;
 	const uint64_t now = GetTickCount64();
+	const uint32_t window = ctx->min_visible_ms;
 
-	// Visibility rule: pressed right now, OR pressed within the last
-	// `min_visible_ms` so that taps shorter than a frame don't flash by
-	// invisibly. KeyIndex values <64 live in `keys[0]`.
-	const uint64_t w_bit = 1ULL << ASCENT_KEY_W;
-	const bool w_pressed_now = (s->keys[0] & w_bit) != 0;
-	const uint64_t w_last = s->key_last_press_tick[ASCENT_KEY_W];
-	const bool w_recently = w_last != 0 && (now - w_last) < ctx->min_visible_ms;
-	const bool w_visible = w_pressed_now || w_recently;
+	// Scale the native layout to the configured source size.
+	gs_matrix_push();
+	gs_matrix_scale3f((float)ctx->width / LAYOUT_WIDTH,
+	                  (float)ctx->height / LAYOUT_HEIGHT, 1.0f);
 
-	// Magenta when W is registered, otherwise a darker grey background.
-	const uint32_t color = w_visible ? 0xFFFF00FF : 0xFF555555;
-	draw_solid(color, ctx->width, ctx->height);
+	// No panel background — surrounding area stays transparent so the
+	// game shows through. Keys and mouse silhouette are drawn opaque
+	// so they remain readable against any game background.
+
+	// Mouse body (drawn first so buttons sit on top).
+	draw_rounded(COLOR_MOUSE_BODY, MOUSE_BODY_X, MOUSE_BODY_Y, MOUSE_BODY_W,
+	             MOUSE_BODY_H, MOUSE_BODY_RADIUS);
+
+	// Keys.
+	for (size_t i = 0; i < KEY_LAYOUT_COUNT; i++) {
+		const struct key_rect *k = &KEY_LAYOUT[i];
+		const uint8_t  idx   = k->key_index;
+		const size_t   chunk = idx / 64;
+		const uint64_t bit   = 1ULL << (idx % 64);
+
+		const bool pressed_now =
+			chunk < 4 && (s->keys[chunk] & bit) != 0;
+		const uint64_t tick = idx < ASCENT_KEY_TICK_SLOTS
+		                              ? s->key_last_press_tick[idx]
+		                              : 0;
+
+		const bool on = is_visible(pressed_now, tick, now, window);
+		draw_rounded(on ? COLOR_KEY_ON : COLOR_KEY_OFF, k->x, k->y,
+		             k->w, k->h, KEY_RADIUS);
+	}
+
+	// Mouse buttons.
+	for (size_t i = 0; i < MOUSE_LAYOUT_COUNT; i++) {
+		const struct mouse_rect *m = &MOUSE_LAYOUT[i];
+		const uint8_t  bit  = m->bit_index;
+		const uint32_t mask = 1u << bit;
+
+		const bool pressed_now = (s->mouse_buttons & mask) != 0;
+		const uint64_t tick = bit < ASCENT_MOUSE_TICK_SLOTS
+		                              ? s->mouse_last_press_tick[bit]
+		                              : 0;
+
+		const bool on = is_visible(pressed_now, tick, now, window);
+		draw_rounded(on ? COLOR_BUTTON_ON : COLOR_BUTTON_OFF, m->x,
+		             m->y, m->w, m->h, m->radius);
+	}
+
+	gs_matrix_pop();
 }
 
 struct obs_source_info ascent_input_overlay_info = {
@@ -228,6 +384,28 @@ struct obs_source_info ascent_input_overlay_info = {
 
 bool obs_module_load(void)
 {
+	char *path = obs_module_file("ascent-input-overlay.effect");
+	if (!path) {
+		blog(LOG_ERROR,
+		     "[ascent-input-overlay] effect file not found in module data");
+		return false;
+	}
+
+	obs_enter_graphics();
+	g_effect = gs_effect_create_from_file(path, NULL);
+	obs_leave_graphics();
+	bfree(path);
+
+	if (!g_effect) {
+		blog(LOG_ERROR,
+		     "[ascent-input-overlay] failed to compile effect");
+		return false;
+	}
+
+	g_param_color  = gs_effect_get_param_by_name(g_effect, "color");
+	g_param_size   = gs_effect_get_param_by_name(g_effect, "size");
+	g_param_radius = gs_effect_get_param_by_name(g_effect, "radius");
+
 	obs_register_source(&ascent_input_overlay_info);
 	blog(LOG_INFO, "[ascent-input-overlay] module loaded");
 	return true;
@@ -235,5 +413,11 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
+	if (g_effect) {
+		obs_enter_graphics();
+		gs_effect_destroy(g_effect);
+		obs_leave_graphics();
+		g_effect = NULL;
+	}
 	blog(LOG_INFO, "[ascent-input-overlay] module unloaded");
 }

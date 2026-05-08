@@ -355,6 +355,28 @@ foreach ($file in $WinCaptureFiles) {
 }
 
 # =======================================================
+# Data: ascent-input-overlay (rounded-rect SDF effect)
+# =======================================================
+Write-Host "`n--- Data: ascent-input-overlay ---"
+
+$AscentOverlayRunDir = Join-Path $RunDir "data\obs-plugins\ascent-input-overlay"
+$AscentOverlaySrcDir = Join-Path $ObsStudioDir "plugins\ascent-input-overlay\data"
+
+$AscentOverlayFiles = @(
+    "ascent-input-overlay.effect"
+)
+
+foreach ($file in $AscentOverlayFiles) {
+    $runPath = Join-Path $AscentOverlayRunDir $file
+    if (Test-Path $runPath) {
+        Copy-BuildFile $runPath "data\obs-plugins\ascent-input-overlay"
+    } else {
+        $srcPath = Join-Path $AscentOverlaySrcDir $file
+        Copy-BuildFile $srcPath "data\obs-plugins\ascent-input-overlay"
+    }
+}
+
+# =======================================================
 # Summary
 # =======================================================
 Write-Host "`n======================================================="
