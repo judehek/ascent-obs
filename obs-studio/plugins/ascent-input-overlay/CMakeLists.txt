@@ -5,7 +5,7 @@ legacy_check()
 add_library(ascent-input-overlay MODULE)
 add_library(OBS::ascent-input-overlay ALIAS ascent-input-overlay)
 
-target_sources(ascent-input-overlay PRIVATE ascent-input-overlay.c ascent-input-overlay-shmem.h)
+target_sources(ascent-input-overlay PRIVATE ascent-input-overlay.c ascent-input-overlay-shmem.h stb_truetype.h)
 
 target_link_libraries(ascent-input-overlay PRIVATE OBS::libobs)
 

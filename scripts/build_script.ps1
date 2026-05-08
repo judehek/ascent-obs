@@ -364,6 +364,7 @@ $AscentOverlaySrcDir = Join-Path $ObsStudioDir "plugins\ascent-input-overlay\dat
 
 $AscentOverlayFiles = @(
     "ascent-input-overlay.effect"
+    "ascent-input-overlay-glyph.effect"
 )
 
 foreach ($file in $AscentOverlayFiles) {

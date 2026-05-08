@@ -8,6 +8,7 @@ uniform float4x4 ViewProj;
 uniform float4 color;
 uniform float2 size;
 uniform float  radius;
+uniform float  outline_thickness;  // 0 = filled, >0 = stroke band of this width
 
 struct VertData {
 	float4 pos : POSITION;
@@ -31,8 +32,16 @@ float4 PSRoundedRect(VertData v_in) : TARGET
 	float2 q = abs(p) - (size * 0.5 - float2(radius, radius));
 	float  d = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - radius;
 
-	// 1px anti-aliased edge.
-	float alpha = saturate(0.5 - d);
+	float alpha;
+	if (outline_thickness > 0.0) {
+		// Stroke mode: keep pixels whose distance to the edge is within
+		// half the thickness, centered on the shape boundary just inside.
+		float stroke_d = abs(d + outline_thickness * 0.5) - outline_thickness * 0.5;
+		alpha = saturate(0.5 - stroke_d);
+	} else {
+		// Fill mode: 1px anti-aliased edge.
+		alpha = saturate(0.5 - d);
+	}
 	return float4(color.rgb, color.a * alpha);
 }
 
