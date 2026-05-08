@@ -35,6 +35,9 @@ if(OBS_CMAKE_VERSION VERSION_GREATER_EQUAL 3.0.0)
 
   # Add plugins in alphabetical order to retain order in IDE projects
   add_subdirectory(aja)
+  if(OS_WINDOWS)
+    add_subdirectory(ascent-input-overlay)
+  endif()
   if(OS_WINDOWS OR OS_MACOS)
     add_subdirectory(coreaudio-encoder)
   endif()

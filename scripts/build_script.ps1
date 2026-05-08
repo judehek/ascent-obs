@@ -191,6 +191,7 @@ Copy-BuildFile $MuxSource "bin\64bit" "ascentobs-ffmpeg-mux.exe"
 Write-Host "`n--- Plugin DLLs (obs-plugins\64bit) ---"
 
 $Plugins = @(
+    "ascent-input-overlay"
     "coreaudio-encoder"
     "image-source"
     "obs-ffmpeg"
