@@ -99,32 +99,10 @@
 #define ERROR_RETRY_INTERVAL 4.0f
 
 // ASCENT_EDIT_START: Carried over (empty)
+// Option C (WS5-01): the Common Files inject-helper lookup was removed; the
+// helper is always loaded from the module folder. Shlobj.h stays for the
+// ShellExecuteEx fallback in create_inject_process_shell.
 #include <Shlobj.h>
-char *get_common_program_file_module(const char *file)
-{
-	struct dstr output = {0};
-	char commonfile_folder_path[MAX_PATH * 2] = {0};
-
-	if (FALSE == SHGetSpecialFolderPathA(NULL, commonfile_folder_path,
-					     CSIDL_PROGRAM_FILES_COMMONX86,
-					     FALSE)) {
-		return 0;
-	}
-	char path[MAX_PATH * 2] = {0};
-	snprintf(path, MAX_PATH * 2, "%s\\ascent\\ascent-obs",
-		 commonfile_folder_path);
-	dstr_copy(&output, path);
-	if (!dstr_is_empty(&output) && dstr_end(&output) != '/' && *file)
-		dstr_cat_ch(&output, '/');
-	dstr_cat(&output, file);
-
-	if (!os_file_exists(output.array)) {
-		dstr_free(&output);
-		return 0;
-	}
-
-	return output.array;
-}
 // ASCENT_EDIT_END: Carried over (empty)
 
 enum capture_mode {
@@ -1199,6 +1177,12 @@ static inline bool create_inject_process(struct game_capture *gc,
 		success = !!CreateProcessW(inject_path_abs_w, command_line_w,
 					   NULL, NULL, false, CREATE_NO_WINDOW,
 					   NULL, NULL, &si, &pi);
+		// ASCENT_EDIT_START: Option C (WS5-01) make the fallback visible
+		if (!success)
+			warn("CreateProcessW for inject helper failed: %lu, "
+			     "falling back to ShellExecuteEx",
+			     GetLastError());
+		// ASCENT_EDIT_END: Option C (WS5-01)
 	}
 
 	if (success) {
@@ -1234,6 +1218,48 @@ static inline bool create_inject_process(struct game_capture *gc,
 
 extern char *get_hook_path(bool b64);
 
+// ASCENT_EDIT_START: Option C (WS5-01) log TokenElevation per injection
+/* Returns 1 if the process token is elevated, 0 if not, and -1 if it could
+ * not be queried (for example an elevated target opened from a non-elevated
+ * process). On -1, *error holds the Win32 error code. */
+static int get_token_elevation(HANDLE process, DWORD *error)
+{
+	HANDLE token = NULL;
+	TOKEN_ELEVATION elevation = {0};
+	DWORD size = 0;
+	int result = -1;
+
+	*error = 0;
+	if (!process) {
+		*error = ERROR_INVALID_HANDLE;
+		return -1;
+	}
+	if (!OpenProcessToken(process, TOKEN_QUERY, &token)) {
+		*error = GetLastError();
+		return -1;
+	}
+	if (GetTokenInformation(token, TokenElevation, &elevation,
+				sizeof(elevation), &size)) {
+		result = elevation.TokenIsElevated ? 1 : 0;
+	} else {
+		*error = GetLastError();
+	}
+	CloseHandle(token);
+	return result;
+}
+
+static void log_injection_elevation(struct game_capture *gc)
+{
+	DWORD target_error = 0;
+	DWORD self_error = 0;
+	int target = get_token_elevation(gc->target_process, &target_error);
+	int self = get_token_elevation(GetCurrentProcess(), &self_error);
+
+	info("TokenElevation: target %d (error: %lu), self %d (error: %lu)",
+	     target, target_error, self, self_error);
+}
+// ASCENT_EDIT_END: Option C (WS5-01)
+
 static inline bool inject_hook(struct game_capture *gc)
 {
 	bool matching_architecture;
@@ -1255,19 +1281,15 @@ static inline bool inject_hook(struct game_capture *gc)
 	}
 	// ASCENT_EDIT_END: Carried over (empty)
 
-	bool use_shell_execute = true;
-	inject_path = get_common_program_file_module(
-		gc->process_is_64bit ? "inject-helper64.exe"
-				     : "inject-helper32.exe");
-
-	if (!inject_path) {
-		use_shell_execute = false;
-		if (gc->process_is_64bit) {
-			inject_path = obs_module_file("inject-helper64.exe");
-		} else {
-			inject_path = obs_module_file("inject-helper32.exe");
-		}
+	// ASCENT_EDIT_START: Option C (WS5-01) always use the module-folder
+	// helper; ShellExecuteEx is only a fallback if CreateProcessW fails.
+	bool use_shell_execute = false;
+	if (gc->process_is_64bit) {
+		inject_path = obs_module_file("inject-helper64.exe");
+	} else {
+		inject_path = obs_module_file("inject-helper32.exe");
 	}
+	// ASCENT_EDIT_END: Option C (WS5-01)
 
 	hook_path = get_hook_path(gc->process_is_64bit);
 
@@ -1284,11 +1306,16 @@ static inline bool inject_hook(struct game_capture *gc)
 	matching_architecture = !gc->process_is_64bit;
 #endif
 
+	// ASCENT_EDIT_START: Option C (WS5-01)
+	log_injection_elevation(gc);
+	// ASCENT_EDIT_END: Option C (WS5-01)
+
 	if (matching_architecture && !use_anticheat(gc)) {
 		info("using direct hook");
 		success = hook_direct(gc, hook_path);
 	} else {
-		info("using helper (%s hook) (elevated: %d): %s",
+		// ASCENT_EDIT: Option C (WS5-01) '(elevated: %d)' -> '(shell: %d)'
+		info("using helper (%s hook) (shell: %d): %s",
 		     use_anticheat(gc) ? "compatibility" : "direct",
 		     use_shell_execute ? 1 : 0, inject_path);
 		success = create_inject_process(gc, inject_path, hook_path,
